@@ -127,7 +127,7 @@ class DuckietownEnv(gym.Env):
 
             print('%s starting gazebo...' % self.container_name)
             pipe = subprocess.Popen([
-                'singularity', 'exec', '--containall', '--cleanenv',
+                'singularity', 'exec', '--cleanenv',
                 'instance://%s' % self.container_name,
                 'bash', '-c',
                 'cd / && source ./start.sh && ./run_gazebo.sh'
@@ -146,7 +146,7 @@ class DuckietownEnv(gym.Env):
 
             print('%s starting gym server node...' % self.container_name)
             pipe = subprocess.Popen([
-                'singularity', 'exec', '--containall', '--cleanenv',
+                'singularity', 'exec', '--cleanenv',
                 'instance://%s' % self.container_name,
                 'bash', '-c',
                 'cd / && source ./start.sh && python2 ./gym-gazebo-server.py %s' % serverPort,
