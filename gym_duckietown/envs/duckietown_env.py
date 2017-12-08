@@ -3,7 +3,7 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 import math
 import time
-from subprocess import call, check_call
+import subprocess
 import numpy
 import zmq
 
@@ -73,7 +73,7 @@ class DuckietownEnv(gym.Env):
         self,
         serverAddr="localhost",
         serverPort=SERVER_PORT,
-        startDocker=False):
+        startContainer=False):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -106,47 +106,51 @@ class DuckietownEnv(gym.Env):
         )
 
         # Last received state data
+        # Last received image
         self.stateData = None
 
-        # Last received image
         self.img = None
 
-        # If a docker image should be started
-        if startDocker:
-            self.docker_name = 'duckietown_%s' % serverPort
+        # If a container image should be started
+        if startContainer:
+            print('will start container')
 
-            # Kill old containers, if running
-            call([
-                'docker', 'rm', '-f', self.docker_name
+            self.container_name = 'duckietown_%s' % serverPort
+
+            print('starting container %s' % self.container_name)
+            subprocess.check_call([
+                'singularity',
+                'instance.start',
+                'duckietown.simg',
+                self.container_name
             ])
 
-            print('starting docker container %s' % self.docker_name)
-            check_call([
-                'docker', 'run', '-d',
-                '-p', '%s:7777' % serverPort,
-                '--name', self.docker_name,
-                '-it', 'yanjundream/duckietown_simulator'
-            ])
-
-            print('%s starting gazebo...' % self.docker_name)
-            check_call([
-                'docker', 'exec', '-d', self.docker_name,
+            print('%s starting gazebo...' % self.container_name)
+            pipe = subprocess.Popen([
+                'singularity', 'exec', '--containall', '--cleanenv',
+                'instance://%s' % self.container_name,
                 'bash', '-c',
                 'cd / && source ./start.sh && ./run_gazebo.sh'
-            ])
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # H4xxx, need a way to wait until we know this is started
-            time.sleep(15)
+            while True:
+                line = pipe.stdout.readline().decode('utf-8').lower().rstrip()
+                if not line == "":
+                    print(line)
 
-            print('%s starting gym server node...' % self.docker_name)
-            check_call([
-                'docker', 'exec', '-d', self.docker_name,
+                if "advertise odom" in line:
+                    pipe.stdout.close()
+                    break
+
+                assert "error" not in line
+
+            print('%s starting gym server node...' % self.container_name)
+            pipe = subprocess.Popen([
+                'singularity', 'exec', '--containall', '--cleanenv',
+                'instance://%s' % self.container_name,
                 'bash', '-c',
-                'cd / && source ./start.sh && python2 ./gym-gazebo-server.py'
-            ])
-
-            # H4xxx, need a way to wait until we know this is started
-            time.sleep(15)
+                'cd / && source ./start.sh && python2 ./gym-gazebo-server.py %s' % serverPort,
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Connect to the Gym bridge ROS node
         context = zmq.Context()
@@ -158,9 +162,9 @@ class DuckietownEnv(gym.Env):
         self.seed()
 
     def _close(self):
-        if hasattr(self, 'docker_name'):
-            print('killing docker container %s' % self.docker_name)
-            call(['docker', 'rm', '-f', self.docker_name])
+        if hasattr(self, 'container_name'):
+            print('killing container %s' % self.container_name)
+            subprocess.call(['singularity', 'instance.stop', self.container_name])
 
     def _reset(self):
         # Step count since episode start
