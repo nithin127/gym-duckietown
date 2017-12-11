@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from __future__ import division, print_function
 
@@ -10,7 +10,8 @@ import pyglet
 
 def main():
 
-    env = gym.make('Duckietown-v0')
+    #env = gym.make('Duckietown-v0')
+    env = DuckietownEnv(startContainer=True)
     env.reset()
 
     env.render()

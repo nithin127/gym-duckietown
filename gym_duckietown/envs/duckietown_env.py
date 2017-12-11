@@ -153,6 +153,7 @@ class DuckietownEnv(gym.Env):
             ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Connect to the Gym bridge ROS node
+        print('connecting to ROS bridge node')
         context = zmq.Context()
         self.socket = context.socket(zmq.PAIR)
         self.socket.connect("tcp://%s:%s" % (serverAddr, serverPort))
