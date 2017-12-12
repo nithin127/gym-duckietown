@@ -46,5 +46,5 @@ compatibility with `gym-duckietown`. I recommend using the PPO or ACKTR implemen
 A sample command to launch training is:
 
 ```
-python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo ppo
+python3 main.py --env-name Duckietown-v0 --no-vis --num-processes 1 --algo a2c  --num-frames 10000000 --entropy-coef 0.22 --lr 0.0002
 ```
