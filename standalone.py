@@ -9,8 +9,8 @@ import gym
 from gym_duckietown.envs import DuckietownEnv, DiscreteEnv
 import pyglet
 
-def main():
 
+def main():
     env = gym.make('Duckie-SimpleSim-v0')
     env = DiscreteEnv(env)
     env.reset()
@@ -58,6 +58,7 @@ def main():
 
     # Enter main event loop
     pyglet.app.run()
+
 
 if __name__ == "__main__":
     main()

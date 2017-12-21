@@ -13,6 +13,7 @@ from gym.utils import seeding
 
 # For Python 3 compatibility
 import sys
+
 if sys.version_info > (3,):
     buffer = memoryview
 
@@ -47,6 +48,7 @@ WHEEL_DIST = 0.102
 # Road tile dimensions (2ft x 2ft, 61cm wide)
 ROAD_TILE_SIZE = 0.61
 
+
 def loadTexture(texName):
     # Assemble the absolute path to the texture
     absPathModule = os.path.realpath(__file__)
@@ -64,6 +66,7 @@ def loadTexture(texName):
     )
 
     return tex
+
 
 def createFBO():
     """Create a frame buffer object"""
@@ -98,7 +101,7 @@ def createFBO():
 
     # Generate a depth  buffer and bind it to the frame buffer
     depthBuffer = GLuint(0);
-    glGenRenderbuffers( 1, byref(depthBuffer))
+    glGenRenderbuffers(1, byref(depthBuffer))
     glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer)
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, CAMERA_WIDTH, CAMERA_HEIGHT)
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
@@ -109,6 +112,7 @@ def createFBO():
 
     return fbId, fbTex
 
+
 def rotatePoint(px, py, cx, cy, theta):
     dx = px - cx
     dy = py - cy
@@ -118,18 +122,19 @@ def rotatePoint(px, py, cx, cy, theta):
 
     return cx + dx, cy + dy
 
+
 class SimpleSimEnv(gym.Env):
     """Simplistic road simulator to test RL training"""
 
     metadata = {
         'render.modes': ['human', 'rgb_array', 'app'],
-        'video.frames_per_second' : 30
+        'video.frames_per_second': 30
     }
 
     def __init__(self,
-        maxSteps=300,
-        imgNoiseScale=0
-    ):
+                 maxSteps=300,
+                 imgNoiseScale=0
+                 ):
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -165,8 +170,8 @@ class SimpleSimEnv(gym.Env):
         self.textLabel = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
-            x = 5,
-            y = WINDOW_SIZE - 19
+            x=5,
+            y=WINDOW_SIZE - 19
         )
 
         # Load the road texture
@@ -182,9 +187,9 @@ class SimpleSimEnv(gym.Env):
         halfSize = ROAD_TILE_SIZE / 2
         verts = [
             -halfSize, 0.0, -halfSize,
-             halfSize, 0.0, -halfSize,
-             halfSize, 0.0,  halfSize,
-            -halfSize, 0.0,  halfSize
+            halfSize, 0.0, -halfSize,
+            halfSize, 0.0, halfSize,
+            -halfSize, 0.0, halfSize
         ]
         texCoords = [
             1.0, 0.0,
@@ -196,10 +201,10 @@ class SimpleSimEnv(gym.Env):
 
         # Create the vertex list for the ground quad
         verts = [
-            -1, -0.05,  1,
+            -1, -0.05, 1,
             -1, -0.05, -1,
-             1, -0.05, -1,
-             1, -0.05,  1
+            1, -0.05, -1,
+            1, -0.05, 1
         ]
         self.groundVList = pyglet.graphics.vertex_list(4, ('v3f', verts))
 
@@ -261,9 +266,9 @@ class SimpleSimEnv(gym.Env):
         assert scale < 1
 
         if isinstance(val, np.ndarray):
-            noise = self.np_random.uniform(low=1-scale, high=1+scale, size=val.shape)
+            noise = self.np_random.uniform(low=1 - scale, high=1 + scale, size=val.shape)
         else:
-            noise = self.np_random.uniform(low=1-scale, high=1+scale)
+            noise = self.np_random.uniform(low=1 - scale, high=1 + scale)
 
         return val * noise
 
@@ -297,7 +302,7 @@ class SimpleSimEnv(gym.Env):
         ])
 
         # Starting direction angle
-        self.curAngle = self._perturb(math.pi/2, 0.2)
+        self.curAngle = self._perturb(math.pi / 2, 0.2)
 
         # Create the vertex list for the ground/noise triangles
         # These are distractors, junk on the floor
@@ -310,7 +315,7 @@ class SimpleSimEnv(gym.Env):
             c = self._perturb(np.array([c, c, c]), 0.1)
             verts += [p[0], p[1], p[2]]
             colors += [c[0], c[1], c[2]]
-        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
+        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors))
 
         # Get the first camera image
         obs = self._renderObs()
@@ -429,24 +434,24 @@ class SimpleSimEnv(gym.Env):
 
         xC, zC = rotatePoint(xM, zM, 0.5, 0.5, -math.pi / 2 * angle)
 
-        #print('i=%s, j=%s' % (i, j))
-        #print('xM=%s, zM=%s' % (xM, zM))
-        #print('xC=%s, zC=%s' % (xC, zC))
+        # print('i=%s, j=%s' % (i, j))
+        # print('xM=%s, zM=%s' % (xM, zM))
+        # print('xC=%s, zC=%s' % (xC, zC))
 
         reward = 0
         done = False
 
         if kind == 'linear':
             if xC < 0.5:
-                #print('in right lane')
+                # print('in right lane')
                 reward = 1
             else:
-                #print('in left lane')
+                # print('in left lane')
                 reward = -1
 
         elif kind == 'diag_left':
             if xC - zC < 0.5:
-                #print('in right lane')
+                # print('in right lane')
                 reward = 1
             else:
                 reward = -1
@@ -454,9 +459,9 @@ class SimpleSimEnv(gym.Env):
         # Bonus for moving forward
         dX, dZ = rotatePoint(0, 1, 0, 0, math.pi / 2 * angle)
         mX, mZ = (x - oldX, z - oldZ)
-        dirDot = dX*mX + dZ*mZ
+        dirDot = dX * mX + dZ * mZ
         if dirDot > 0:
-            #print('forward bonus')
+            # print('forward bonus')
             reward += 1
 
         return obs, reward, done, {}
@@ -464,7 +469,7 @@ class SimpleSimEnv(gym.Env):
     def _renderObs(self):
         # Switch to the default context
         # This is necessary on Linux nvidia drivers
-        #pyglet.gl._shadow_window.switch_to()
+        # pyglet.gl._shadow_window.switch_to()
         self.shadow_window.switch_to()
 
         isFb = glIsFramebuffer(self.fbId)
@@ -508,7 +513,7 @@ class SimpleSimEnv(gym.Env):
 
         # Draw the ground quad
         glDisable(GL_TEXTURE_2D)
-        glColor3f(*self.groundColor)
+        glColor3f(1, 1, 1)
         glPushMatrix()
         glScalef(50, 1, 50)
         self.groundVList.draw(GL_QUADS)
@@ -521,7 +526,7 @@ class SimpleSimEnv(gym.Env):
         glEnable(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glColor3f(*self.roadColor)
+        glColor3f(1, 1, 1)
 
         # For each grid tile
         for j in range(self.gridHeight):
@@ -615,7 +620,7 @@ class SimpleSimEnv(gym.Env):
             height,
             'RGB',
             img.tobytes(),
-            pitch = width * 3,
+            pitch=width * 3,
         )
         imgData.blit(0, 0, 0, WINDOW_SIZE, WINDOW_SIZE)
 

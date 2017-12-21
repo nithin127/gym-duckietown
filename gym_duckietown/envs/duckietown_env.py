@@ -13,11 +13,13 @@ from pyglet.gl import glPushMatrix, glPopMatrix, glScalef, glTranslatef
 
 # For Python 3 compatibility
 import sys
+
 if sys.version_info > (3,):
     buffer = memoryview
 
 # Rendering window size
 WINDOW_SIZE = 512
+
 
 def recvArray(socket):
     """Receive a numpy array over zmq"""
@@ -26,6 +28,7 @@ def recvArray(socket):
     buf = buffer(msg)
     A = numpy.frombuffer(buf, dtype=md['dtype'])
     return A.reshape(md['shape'])
+
 
 class DiscreteEnv(gym.ActionWrapper):
     """
@@ -48,6 +51,7 @@ class DiscreteEnv(gym.ActionWrapper):
         else:
             assert False, "unknown action"
 
+
 class DuckietownEnv(gym.Env):
     """
     OpenAI gym environment wrapper for the Duckietown simulation.
@@ -56,7 +60,7 @@ class DuckietownEnv(gym.Env):
 
     metadata = {
         'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second' : 30
+        'video.frames_per_second': 30
     }
 
     # Port to connect to on the server
@@ -70,10 +74,10 @@ class DuckietownEnv(gym.Env):
     IMG_SHAPE = (3, CAMERA_WIDTH, CAMERA_HEIGHT)
 
     def __init__(
-        self,
-        serverAddr="localhost",
-        serverPort=SERVER_PORT,
-        startContainer=False):
+            self,
+            serverAddr="localhost",
+            serverPort=SERVER_PORT,
+            startContainer=False):
 
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
@@ -101,8 +105,8 @@ class DuckietownEnv(gym.Env):
         self.textLabel = pyglet.text.Label(
             font_name="Arial",
             font_size=14,
-            x = 5,
-            y = WINDOW_SIZE - 19
+            x=5,
+            y=WINDOW_SIZE - 19
         )
 
         # Last received state data
@@ -139,7 +143,7 @@ class DuckietownEnv(gym.Env):
 
             while True:
                 line = pipe.stdout.readline().decode('utf-8').lower().rstrip()
-                #if not line == "":
+                # if not line == "":
                 #    print(line)
 
                 if "advertise odom" in line:
@@ -178,7 +182,7 @@ class DuckietownEnv(gym.Env):
         self.stepCount = 0
 
         # Tell the server to reset the simulation
-        self.socket.send_json({ "command":"reset" })
+        self.socket.send_json({"command": "reset"})
 
         # Receive state data (position, etc)
         self.stateData = self.socket.recv_json()
@@ -206,8 +210,8 @@ class DuckietownEnv(gym.Env):
 
         # Send the action to the server
         self.socket.send_json({
-            "command":"action",
-            "values": [ float(action[0]), float(action[1]) ]
+            "command": "action",
+            "values": [float(action[0]), float(action[1])]
         })
 
         # State at the previous step
@@ -222,7 +226,7 @@ class DuckietownEnv(gym.Env):
         x, y, z = self.stateData['position']
 
         # End of lane, to the right
-        #targetPos = (0.0, 1.12)
+        # targetPos = (0.0, 1.12)
 
         # End of lane, centered on yellow markers
         targetPos = (0.0, 1.00)
@@ -233,9 +237,9 @@ class DuckietownEnv(gym.Env):
         dist = abs(dx) + abs(dy)
         reward = -dist
 
-        #print('x=%.2f, y=%.2f' % (x, y))
-        #print('  d=%.2f' % dist)
-        #print('  a=%s' % str(action))
+        # print('x=%.2f, y=%.2f' % (x, y))
+        # print('  d=%.2f' % dist)
+        # print('  a=%s' % str(action))
 
         done = False
 
@@ -277,7 +281,7 @@ class DuckietownEnv(gym.Env):
             height,
             'RGB',
             self.img.tobytes(),
-            pitch = width * 3,
+            pitch=width * 3,
         )
         glPushMatrix()
         glTranslatef(0, WINDOW_SIZE, 0)
