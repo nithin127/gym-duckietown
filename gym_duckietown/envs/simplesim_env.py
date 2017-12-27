@@ -175,7 +175,7 @@ class SimpleSimEnv(gym.Env):
         )
 
         # Load the road texture
-        self.roadTex = loadTexture('road.png')
+        self.roadTex = loadTexture('road_plain.png')
 
         # Load the road turn texture
         self.roadDiagTex = loadTexture('road_diag.png')
