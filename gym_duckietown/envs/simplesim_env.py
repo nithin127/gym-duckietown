@@ -131,10 +131,14 @@ class SimpleSimEnv(gym.Env):
         'video.frames_per_second': 30
     }
 
-    def __init__(self,
+    def __init__(self, tinted=False, tint_amount=0.2,
                  maxSteps=300,
                  imgNoiseScale=0
                  ):
+        self.tinted = tinted
+        self.tint_amount = tint_amount
+        self.current_tint_channel = None  # will be reset to random color every reset
+
         # Two-tuple of wheel torques, each in the range [-1, 1]
         self.action_space = spaces.Box(
             low=-1,
@@ -317,10 +321,19 @@ class SimpleSimEnv(gym.Env):
             colors += [c[0], c[1], c[2]]
         self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors))
 
+        self.current_tint_channel = np.random.randint(3)
+        self.current_tint = np.random.rand(1)[0] * self.tint_amount
+
         # Get the first camera image
-        obs = self._renderObs()
+        obs = self.tint_image(self._renderObs())
 
         # Return first observation
+        return obs
+
+    def tint_image(self, obs):
+        if self.tinted:
+            obs[:, :, self.current_tint_channel] += self.current_tint
+            obs = np.clip(obs, 0, 1)
         return obs
 
     def _seed(self, seed=None):
@@ -403,7 +416,7 @@ class SimpleSimEnv(gym.Env):
         j = int(zR + (0.5 if zR > 0 else -0.5))
 
         # Generate the current camera image
-        obs = self._renderObs()
+        obs = self.tint_image(self._renderObs())
 
         # If the agent is outside of the grid
         if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
@@ -447,14 +460,14 @@ class SimpleSimEnv(gym.Env):
                 reward = 1
             else:
                 # print('in left lane')
-                reward = -1
+                reward = -2
 
         elif kind == 'diag_left':
             if xC - zC < 0.5:
                 # print('in right lane')
                 reward = 1
             else:
-                reward = -1
+                reward = -2
 
         # Bonus for moving forward
         dX, dZ = rotatePoint(0, 1, 0, 0, math.pi / 2 * angle)
@@ -462,7 +475,7 @@ class SimpleSimEnv(gym.Env):
         dirDot = dX * mX + dZ * mZ
         if dirDot > 0:
             # print('forward bonus')
-            reward += 1
+            reward += 5
 
         return obs, reward, done, {}
 
@@ -584,7 +597,7 @@ class SimpleSimEnv(gym.Env):
             return
 
         # Render the observation
-        img = self._renderObs()
+        img = self.tint_image(self._renderObs())
 
         if mode == 'rgb_array':
             return img
@@ -631,3 +644,19 @@ class SimpleSimEnv(gym.Env):
 
         if mode == 'human':
             self.window.flip()
+
+
+if __name__ == '__main__':
+    import gym_duckietown
+
+    env = gym.make("Duckie-SimpleSim-Tinted-v0")
+
+    env.reset()
+    env.render()
+
+    for i in range(20):
+        action = env.action_space.sample()
+        obs, rew, _, _ = env.step(action)
+        print("action: {}, obs: {}, rew: {}".format(action, obs.shape, rew))
+        env.render()
+        time.sleep(0.2)

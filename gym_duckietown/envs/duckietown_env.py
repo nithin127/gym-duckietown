@@ -43,9 +43,9 @@ class DiscreteEnv(gym.ActionWrapper):
 
     def _action(self, action):
         if action == 0:
-            return [0, 0.35]
+            return [0, 0.2]
         elif action == 1:
-            return [0.35, 0]
+            return [0.2, 0]
         elif action == 2:
             return [0.5, 0.5]
         else:
