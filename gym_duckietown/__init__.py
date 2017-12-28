@@ -4,11 +4,13 @@ register(
     id='Duckie-SimpleSim-v0',
     entry_point='gym_duckietown.envs:SimpleSimEnv',
     reward_threshold=900.0,
+    max_episode_steps=1000,
     kwargs={'tinted': False}
 )
 register(
     id='Duckie-SimpleSim-Tinted-v0',
     entry_point='gym_duckietown.envs:SimpleSimEnv',
     reward_threshold=900.0,
+    max_episode_steps=1000,
     kwargs={'tinted': True, 'tint_amount': 0.2}
 )

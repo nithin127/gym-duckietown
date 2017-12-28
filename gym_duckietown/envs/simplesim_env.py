@@ -4,6 +4,7 @@ import time
 import numpy as np
 
 import pyglet
+import scipy
 from pyglet.gl import *
 from ctypes import byref, POINTER
 
@@ -21,8 +22,8 @@ if sys.version_info > (3,):
 WINDOW_SIZE = 512
 
 # Camera image size
-CAMERA_WIDTH = 64
-CAMERA_HEIGHT = 64
+CAMERA_WIDTH = 84
+CAMERA_HEIGHT = 84
 
 # Camera image shape
 IMG_SHAPE = (CAMERA_WIDTH, CAMERA_HEIGHT, 3)
@@ -477,6 +478,10 @@ class SimpleSimEnv(gym.Env):
             # print('forward bonus')
             reward += 5
 
+        #scaling to be compatible with Gym img format
+        obs *= 255
+        # obs = scipy.misc.imresize(obs, size=(200,200), interp="bilinear")
+
         return obs, reward, done, {}
 
     def _renderObs(self):
@@ -658,5 +663,6 @@ if __name__ == '__main__':
         action = env.action_space.sample()
         obs, rew, _, _ = env.step(action)
         print("action: {}, obs: {}, rew: {}".format(action, obs.shape, rew))
+        print("min: {}, max: {}".format(obs.min(), obs.max()))
         env.render()
         time.sleep(0.2)
