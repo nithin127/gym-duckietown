@@ -21,16 +21,31 @@ env.render()
 model = Model()
 model.load('trained_models/angle_model.pt')
 
-#Define the gains
-kp = 0.01
+# Define the gains
+l_gain = 0.0075
+r_gain = 0.0075
 
 try:
     while True:
         angle = model.getAngle(obs)
         print('angle=%.2f' % angle)
 
-        vel = np.array([0.6+kp*angel, 0.6-kp*angle])
-        
+        """
+        if angle > 8:
+            vel = np.array([0.7, 0.4])
+        elif angle < -8:
+            vel = np.array([0.4, 0.7])
+        else:
+            vel = np.array([0.6, 0.6])
+        """
+
+        angle = min(max(angle, -20), 20)
+        l_vel = 0.6 + l_gain * angle
+        r_vel = 0.6 - r_gain * angle
+        vel = np.array([l_vel, r_vel])
+
+        print(vel)
+
         obs, reward, done, info = env.step(vel)
         #print('stepCount = %s, reward=%.3f' % (env.stepCount, reward))
 
@@ -43,7 +58,7 @@ try:
 
         time.sleep(0.1)
 
-except Exception as e:
-    print(e)
+except:
+    print('closing env')
     env.close()
     time.sleep(0.25)
