@@ -26,7 +26,7 @@ should install Pytorch as follows as follows:
 
 ```
 # PyTorch
-conda install pytorch torchvision -c soumith
+conda install pytorch torchvision -c pytorch
 ```
 
 Usage
