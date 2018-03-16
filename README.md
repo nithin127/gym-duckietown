@@ -1,6 +1,37 @@
 # Gym-Duckietown
 
-Duckietown simulator environment for OpenAI Gym.
+[Duckietown](http://duckietown.mit.edu/) self-driving car simulator environment for OpenAI Gym.
+
+Introduction
+------------
+
+This repository contains 3 different gym environments:
+- `Duckie-SimpleSim-v0`
+- `Duckietown-v0`
+- `Duckiebot-v0`
+
+The `Duckie-SimpleSim-v0` environment is a simple lane-following simulator
+written in OpenGL (Pyglet). It draws a loop of road with left and right turns,
+along with obstacles in the background. It implements various forms of
+[domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
+and basic differential-drive physics (without acceleration).
+
+The `Duckietown-v0` environment is meant to connect to a remote server runnin
+ROS/Gazebo which runs a more complete Duckietown simulation. This simulation is
+often more buggy, slower, and trickier to get working, but it has a more accurate
+physics model and prettier graphics, but no domain-randomization.
+
+The `Duckiebot-v0` environment is meant to connect to software running on
+a real Duckiebot and remotely control the robot. It is a tool to test that policies
+trained in simulation can transfer to the real robot. If you want to
+control your robot remotely with the `Duckiebot-v0` environment, you will need to
+install the software found in the [duck-remote-iface](https://github.com/maximecb/duck-remote-iface)
+repository on your Duckiebot.
+
+If you simply want to experiment with lane-following, I would strongly
+recommend that you start with the `Duckie-SimpleSim-v0` environment, because
+it is fast, relatively easy to install, and we know for a fact that
+reinforcement learning policies can be successfully trained on it.
 
 Installation
 ------------
@@ -8,9 +39,11 @@ Installation
 Requirements:
 - Python 3
 - OpenAI gym
-- numpy
+- NumPy
 - scipy
-- pyglet
+- OpenCV
+- Pyglet
+- PyTorch
 
 Clone this repository and install the dependencies with `pip3`:
 
@@ -22,7 +55,7 @@ pip3 install -e .
 
 Reinforcement learning code forked from [this repository](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr)
 is included under [/pytorch_rl](/pytorch_rl). If you wish to use this code, you
-should install Pytorch as follows as follows:
+should install [PyTorch](http://pytorch.org/) as follows:
 
 ```
 # PyTorch
@@ -32,24 +65,25 @@ conda install pytorch torchvision -c pytorch
 Usage
 -----
 
-To run the standalone UI application, which allows you to control the robot manually:
+To run the standalone UI application, which allows you to control the simulation or real
+robot manually:
 
 ```python3
-./standalone.py
+./standalone.py --env-name Duckie-SimpleSim-v0
 ```
 
-The standalone application will launch the gym environment, receive
-camera images received and send actions (keyboard commands) back.
+The `standalone.py` application will launch the Gym environment, display
+camera images and send actions (keyboard commands) back to the simulator or robot.
 
 To train a reinforcement learning agent, you can use the code provided under [/pytorch_rl](/pytorch_rl). I recommend using the A2C or ACKTR implementations.
+
 A sample command to launch training is:
 
 ```
-python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --num-frames 1000000 --lr 0.0002 --entropy-coef 0.01 --max-grad-norm 0.5
+python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5
 ```
 
-Then, to visualize the result of training, you can run the following command.
-Note that you can do this while the training process is still running.
+Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running:
 
 ```
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
