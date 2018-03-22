@@ -168,7 +168,11 @@ def load_img(file_name):
     img = np.ascontiguousarray(img)
     img = torch.from_numpy(img).float()
     img = img.transpose(0, 1).transpose(0, 2)
-    return img.cuda()
+
+    if torch.cuda.is_available():
+        img = img.cuda()
+
+    return img
 
 if __name__ == "__main__":
     env = SimpleSimEnv()
@@ -176,7 +180,9 @@ if __name__ == "__main__":
 
     model = Model()
     model.printInfo()
-    model.cuda()
+
+    if torch.cuda.is_available():
+        model.cuda()
 
     # weight_decay is L2 regularization, helps avoid overfitting
     optimizer = optim.Adam(
@@ -190,8 +196,11 @@ if __name__ == "__main__":
     for epoch in range(1, 1000000):
         startTime = time.time()
         images, targets = genBatch()
-        images = Variable(torch.from_numpy(images).float()).cuda()
-        targets = Variable(torch.from_numpy(targets).float()).cuda()
+        images = Variable(torch.from_numpy(images).float())
+        targets = Variable(torch.from_numpy(targets).float())
+        if torch.cuda.is_available():
+            images = images.cuda()
+            targets = targets.cuda()
         genTime = int(1000 * (time.time() - startTime))
 
         startTime = time.time()
