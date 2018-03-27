@@ -149,7 +149,7 @@ def train(model, optimizer, image, target):
 
     ang_error = (angle - target).abs().mean()
 
-    return loss.data[0], ang_error
+    return loss.data[0], ang_error.data[0]
 
 def save_img(file_name, img):
     from skimage import io
