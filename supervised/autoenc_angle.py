@@ -115,7 +115,7 @@ def genData():
     img = env.reset().copy()
     img = img.transpose(2, 0, 1)
 
-    angle = env.getFollowAngle(0.30)
+    angle = env.get_follow_angle(0.30)
 
     return img, angle
 
