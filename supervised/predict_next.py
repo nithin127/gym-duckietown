@@ -214,26 +214,33 @@ def test_model(model):
         except Exception as e:
             print(e)
 
-def train(model, obs, vels, target):
-    # Zero the parameter gradients
-    optimizer.zero_grad()
+def train_loop(model, optimizer, loss_fn):
+    avg_loss = 0
 
-    dec, obs2 = model(obs, vels)
+    for epoch in range(1, 1000000):
+        startTime = time.time()
+        obs, vels, obs2 = gen_batch()
+        genTime = int(1000 * (time.time() - startTime))
 
-    dec_loss = (obs - dec).norm(2).mean()
-    obs2_loss = (target - obs2).norm(2).mean()
+        startTime = time.time()
+        optimizer.zero_grad()
+        loss = loss_fn(model, obs, vels)
+        loss.backward()
+        optimizer.step()
+        trainTime = int(1000 * (time.time() - startTime))
 
-    #loss = 4 * dec_loss + 1 * obs2_loss
+        loss = loss.data[0]
+        avg_loss = avg_loss * 0.995 + loss * 0.005
 
-    loss = dec_loss
+        print('gen time: %d ms' % genTime)
+        print('train time: %d ms' % trainTime)
+        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
 
+        if epoch == 100 or epoch % 1000 == 0:
+            test_model(model)
 
-
-    loss.backward()
-    optimizer.step()
-
-
-    return loss.data[0]
+        #if epoch % 1000 == 0:
+        #    model.save('trained_models/angle_model.pt')
 
 if __name__ == "__main__":
     env = SimpleSimEnv()
@@ -251,25 +258,9 @@ if __name__ == "__main__":
         weight_decay=1e-3
     )
 
-    avg_loss = 0
+    def autoenc_loss(model, obs, vels):
+        dec, obs2 = model(obs, vels)
+        return (obs - dec).norm(2).mean()
+        #obs2_loss = (target - obs2).norm(2).mean()
 
-    for epoch in range(1, 1000000):
-        startTime = time.time()
-        obs, vels, obs2 = gen_batch()
-        genTime = int(1000 * (time.time() - startTime))
-
-        startTime = time.time()
-        loss = train(model, obs, vels, obs2)
-        trainTime = int(1000 * (time.time() - startTime))
-
-        avg_loss = avg_loss * 0.995 + loss * 0.005
-
-        print('gen time: %d ms' % genTime)
-        print('train time: %d ms' % trainTime)
-        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
-
-        if epoch == 100 or epoch % 1000 == 0:
-            test_model(model)
-
-        #if epoch % 1000 == 0:
-        #    model.save('trained_models/angle_model.pt')
+    train_loop(model, optimizer, autoenc_loss)
