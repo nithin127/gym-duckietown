@@ -546,8 +546,8 @@ class SimpleSimEnv(gym.Env):
                     cps = self._get_curve(i+di, j+dj)
                 except:
                     continue
-                t = bezierClosest(cps, aheadPt)
-                pt = bezierPoint(cps, t)
+                t = bezier_closest(cps, aheadPt)
+                pt = bezier_point(cps, t)
                 dist = np.linalg.norm(aheadPt - pt)
                 if dist < curveDist:
                     curvePt = pt
