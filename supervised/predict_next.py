@@ -129,60 +129,6 @@ class Model(nn.Module):
     def load(self, file_name):
         self.load_state_dict(torch.load(file_name))
 
-def gen_data():
-    obs = env.reset().copy()
-    obs = obs.transpose(2, 0, 1)
-
-    # Generate random velocities
-    vels = np.random.uniform(low=0.3, high=1.0, size=(2,))
-
-    obs2, reward, done, info = env.step(vels)
-    obs2 = obs2.transpose(2, 0, 1)
-
-    return obs, vels, obs2
-
-def gen_batch(batch_size=2):
-    obs = []
-    vels = []
-    obs2 = []
-
-    for i in range(0, batch_size):
-        o, v, o2 = gen_data()
-        obs.append(o)
-        vels.append(v)
-        obs2.append(o2)
-
-    obs = np.stack(obs)
-    vels = np.stack(vels)
-    obs2 = np.stack(obs2)
-
-    return obs, vels, obs2
-
-def make_var(arr):
-    arr = np.ascontiguousarray(arr)
-    arr = torch.from_numpy(arr).float()
-    arr = Variable(arr)
-    if torch.cuda.is_available():
-        arr = arr.cuda()
-    return arr
-
-def train(model, obs, vels, target):
-    # Zero the parameter gradients
-    optimizer.zero_grad()
-
-    dec, obs2 = model(obs, vels)
-
-    dec_loss = (obs - dec).norm(2).mean()
-    obs2_loss = (target - obs2).norm(2).mean()
-
-    loss = 4 * dec_loss + 1 * obs2_loss
-    loss.backward()
-    optimizer.step()
-
-    img_error = (target - obs2).abs().mean()
-
-    return loss.data[0], img_error.data[0]
-
 def save_img(file_name, img):
     from skimage import io
 
@@ -211,6 +157,84 @@ def load_img(file_name):
 
     return make_var(img)
 
+def gen_data():
+    obs = env.reset().copy()
+    obs = obs.transpose(2, 0, 1)
+
+    # Generate random velocities
+    vels = np.random.uniform(low=0.3, high=1.0, size=(2,))
+
+    obs2, reward, done, info = env.step(vels)
+    obs2 = obs2.transpose(2, 0, 1)
+
+    return obs, vels, obs2
+
+def gen_batch(batch_size=2):
+    obs = []
+    vels = []
+    obs2 = []
+
+    for i in range(0, batch_size):
+        o, v, o2 = gen_data()
+        obs.append(o)
+        vels.append(v)
+        obs2.append(o2)
+
+    obs = make_var(np.stack(obs))
+    vels = make_var(np.stack(vels))
+    obs2 = make_var(np.stack(obs2))
+
+    return obs, vels, obs2
+
+def make_var(arr):
+    arr = np.ascontiguousarray(arr)
+    arr = torch.from_numpy(arr).float()
+    arr = Variable(arr)
+    if torch.cuda.is_available():
+        arr = arr.cuda()
+    return arr
+
+def test_model(model):
+    obs, vels, obs2 = gen_batch()
+    img0 = obs[0:1]
+    vels = make_var(np.array([0.8, 0.8])).unsqueeze(0)
+
+    dec, obs2 = model(img0, vels)
+
+    save_img('seg_img.png', img0)
+    save_img('img_dec.png', dec)
+    save_img('img_obs2.png', obs2)
+
+    for i in range(0, 180):
+        try:
+            img = load_img('real_images/img_%03d.png' % i)
+            img = img.unsqueeze(0)
+            _, out = model(img, vels)
+            save_img('real_images/img_%03d_recon.png' % i, out)
+        except Exception as e:
+            print(e)
+
+def train(model, obs, vels, target):
+    # Zero the parameter gradients
+    optimizer.zero_grad()
+
+    dec, obs2 = model(obs, vels)
+
+    dec_loss = (obs - dec).norm(2).mean()
+    obs2_loss = (target - obs2).norm(2).mean()
+
+    #loss = 4 * dec_loss + 1 * obs2_loss
+
+    loss = dec_loss
+
+
+
+    loss.backward()
+    optimizer.step()
+
+
+    return loss.data[0]
+
 if __name__ == "__main__":
     env = SimpleSimEnv()
     env.reset()
@@ -227,7 +251,7 @@ if __name__ == "__main__":
         weight_decay=1e-3
     )
 
-    avg_error = 0
+    avg_loss = 0
 
     for epoch in range(1, 1000000):
         startTime = time.time()
@@ -235,38 +259,17 @@ if __name__ == "__main__":
         genTime = int(1000 * (time.time() - startTime))
 
         startTime = time.time()
-        obs = make_var(obs)
-        vels = make_var(vels)
-        obs2 = make_var(obs2)
-        convTime = int(1000 * (time.time() - startTime))
-
-        startTime = time.time()
-        loss, error = train(model, obs, vels, obs2)
+        loss = train(model, obs, vels, obs2)
         trainTime = int(1000 * (time.time() - startTime))
 
-        avg_error = avg_error * 0.995 + error * 0.005
+        avg_loss = avg_loss * 0.995 + loss * 0.005
 
         print('gen time: %d ms' % genTime)
-        print('conv time: %d ms' % convTime)
         print('train time: %d ms' % trainTime)
-        print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
+        print('epoch %d, loss=%.3f' % (epoch, avg_loss))
 
         if epoch == 100 or epoch % 1000 == 0:
-            img0 = obs[0:1]
-            vels = make_var(np.array([0.8, 0.8])).unsqueeze(0)
-            dec, obs2 = model(img0, vels)
-            save_img('seg_img.png', img0)
-            save_img('img_dec.png', dec)
-            save_img('img_obs2.png', obs2)
+            test_model(model)
 
-            for i in range(0, 180):
-                try:
-                    img = load_img('real_images/img_%03d.png' % i)
-                    img = img.unsqueeze(0)
-                    _, out = model(img, vels)
-                    save_img('real_images/img_%03d_recon.png' % i, out)
-                except Exception as e:
-                    print(e)
-
-        if epoch % 1000 == 0:
-            model.save('trained_models/angle_model.pt')
+        #if epoch % 1000 == 0:
+        #    model.save('trained_models/angle_model.pt')
