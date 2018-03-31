@@ -31,11 +31,11 @@ class Encoder(nn.Module):
     def __init__(self, enc_size):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
-        self.conv2 = nn.Conv2d(32, 32, 4, stride=1)
-        self.conv3 = nn.Conv2d(32, 32, 4, stride=1)
+        self.conv1 = nn.Conv2d(3, 32, 6, stride=3)
+        self.conv2 = nn.Conv2d(32, 32, 4, stride=2)
+        self.conv3 = nn.Conv2d(32, 32, 4, stride=2)
 
-        self.linear1 = nn.Linear(32 * 9 * 14, 256)
+        self.linear1 = nn.Linear(32 * 8 * 11, 256)
         self.linear2 = nn.Linear(256, enc_size)
 
     def forward(self, img):
@@ -51,8 +51,10 @@ class Encoder(nn.Module):
 
         x = self.conv3(x)
         conv_out = F.leaky_relu(x)
-        conv_out = conv_out.view(batch_size, -1)
 
+        #print(conv_out.size())
+
+        conv_out = conv_out.view(batch_size, -1)
         x = F.leaky_relu(self.linear1(conv_out))
         mid = F.leaky_relu(self.linear2(x))
 
@@ -63,18 +65,18 @@ class Decoder(nn.Module):
         super().__init__()
 
         self.linear1 = nn.Linear(enc_size, 256)
-        self.linear2 = nn.Linear(256, 32 * 9 * 14)
+        self.linear2 = nn.Linear(256, 32 * 8 * 11)
 
-        self.deconv1 = nn.ConvTranspose2d(32, 32, 4, stride=1)
-        self.deconv2 = nn.ConvTranspose2d(32, 32, 4, stride=1)
-        self.deconv3 = nn.ConvTranspose2d(32, 3, 8, stride=8)
+        self.deconv1 = nn.ConvTranspose2d(32, 32, 5, stride=2, output_padding=0)
+        self.deconv2 = nn.ConvTranspose2d(32, 32, 5, stride=2, output_padding=0)
+        self.deconv3 = nn.ConvTranspose2d(32, 3, 6, stride=3)
 
     def forward(self, enc):
         batch_size = enc.size(0)
 
         x = F.leaky_relu(self.linear1(enc))
         x = F.leaky_relu(self.linear2(x))
-        x = x.view(batch_size, 32, 9, 14)
+        x = x.view(batch_size, 32, 8, 11)
 
         x = self.deconv1(x)
         x = F.leaky_relu(x)
@@ -84,6 +86,10 @@ class Decoder(nn.Module):
 
         x = self.deconv3(x)
         x = F.leaky_relu(x)
+
+        #print(x.size())
+        x = x[:, :, 3:123, 1:161]
+        #print(x.size())
 
         return x
 
