@@ -3,6 +3,7 @@
 import time
 from functools import reduce
 import operator
+from itertools import chain
 
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
@@ -93,16 +94,31 @@ class Decoder(nn.Module):
 
         return x
 
+class Predictor(nn.Module):
+    def __init__(self, enc_size):
+        super().__init__()
+
+        self.enc_linear = nn.Linear(enc_size, 96)
+        self.vel_linear = nn.Linear(2, 32)
+        self.linear2 = nn.Linear(128, 128)
+        self.linear3 = nn.Linear(128, enc_size)
+
+    def forward(self, enc, vels):
+        x0 = F.leaky_relu(self.enc_linear(enc))
+        x1 = F.leaky_relu(self.vel_linear(vels))
+        x = torch.cat((x0, x1), dim=1)
+        x = F.leaky_relu(self.linear2(x))
+        x = F.leaky_relu(self.linear3(x))
+
+        return x
+
 class Model(nn.Module):
     def __init__(self, enc_size=8):
         super().__init__()
 
         self.encoder = Encoder(enc_size)
         self.decoder = Decoder(enc_size)
-
-        self.enc_linear = nn.Linear(enc_size, 32)
-        self.vel_linear = nn.Linear(2, 32)
-        self.reenc_linear = nn.Linear(64, enc_size)
+        self.predictor = Predictor(enc_size)
 
         self.apply(init_weights)
 
@@ -112,11 +128,7 @@ class Model(nn.Module):
         enc = self.encoder(obs)
         dec = self.decoder(enc)
 
-        x0 = F.leaky_relu(self.enc_linear(enc))
-        x1 = F.leaky_relu(self.vel_linear(vels))
-        x2 = torch.cat((x0, x1), dim=1)
-        enc2 = F.leaky_relu(self.reenc_linear(x2))
-
+        enc2 = self.predictor(enc, vels)
         dec2 = self.decoder(enc2)
 
         return dec, dec2
@@ -168,7 +180,8 @@ def gen_data():
     obs = obs.transpose(2, 0, 1)
 
     # Generate random velocities
-    vels = np.random.uniform(low=0.3, high=1.0, size=(2,))
+    #vels = np.random.uniform(low=0.3, high=1.0, size=(2,))
+    vels = np.array([0.8, 0.8])
 
     obs2, reward, done, info = env.step(vels)
     obs2 = obs2.transpose(2, 0, 1)
@@ -220,17 +233,17 @@ def test_model(model):
         except Exception as e:
             print(e)
 
-def train_loop(model, optimizer, loss_fn):
+def train_loop(model, optimizer, loss_fn, num_epochs):
     avg_loss = 0
 
-    for epoch in range(1, 1000000):
+    for epoch in range(1, num_epochs+1):
         startTime = time.time()
         obs, vels, obs2 = gen_batch()
         genTime = int(1000 * (time.time() - startTime))
 
         startTime = time.time()
         optimizer.zero_grad()
-        loss = loss_fn(model, obs, vels)
+        loss = loss_fn(model, obs, vels, obs2)
         loss.backward()
         optimizer.step()
         trainTime = int(1000 * (time.time() - startTime))
@@ -259,14 +272,26 @@ if __name__ == "__main__":
 
     # weight_decay is L2 regularization, helps avoid overfitting
     optimizer = optim.Adam(
-        model.parameters(),
-        lr=0.0005,
-        weight_decay=1e-3
+        chain(model.encoder.parameters(), model.decoder.parameters()),
+        lr=0.001
+        #weight_decay=1e-3
     )
 
-    def autoenc_loss(model, obs, vels):
+    def autoenc_loss(model, obs, vels, obs2):
         dec, obs2 = model(obs, vels)
         return (obs - dec).norm(2).mean()
-        #obs2_loss = (target - obs2).norm(2).mean()
 
-    train_loop(model, optimizer, autoenc_loss)
+    train_loop(model, optimizer, autoenc_loss, 100)
+
+    optimizer = optim.Adam(
+        model.predictor.parameters(),
+        lr=0.001
+        #weight_decay=1e-3
+    )
+
+    # FIXME: temporarily testing pure reconstruction
+    def obs2_loss(model, obs, vels, obs2):
+        dec, dec2 = model(obs, vels)
+        return (dec2 - obs2).norm(2).mean()
+
+    train_loop(model, optimizer, obs2_loss, 120000)
