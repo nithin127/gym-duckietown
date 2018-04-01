@@ -281,7 +281,7 @@ if __name__ == "__main__":
         dec, obs2 = model(obs, vels)
         return (obs - dec).norm(2).mean()
 
-    train_loop(model, optimizer, autoenc_loss, 100)
+    train_loop(model, optimizer, autoenc_loss, 120000)
 
     optimizer = optim.Adam(
         model.predictor.parameters(),
