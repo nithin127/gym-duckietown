@@ -8,6 +8,8 @@ from itertools import chain
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
 
+from utils import *
+
 import numpy as np
 
 import torch
@@ -204,14 +206,6 @@ def gen_batch(batch_size=2):
     obs2 = make_var(np.stack(obs2))
 
     return obs, vels, obs2
-
-def make_var(arr):
-    arr = np.ascontiguousarray(arr)
-    arr = torch.from_numpy(arr).float()
-    arr = Variable(arr)
-    if torch.cuda.is_available():
-        arr = arr.cuda()
-    return arr
 
 def test_model(model):
     obs, vels, obs2 = gen_batch()
