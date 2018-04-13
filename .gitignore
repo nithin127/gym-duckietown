@@ -2,7 +2,6 @@
 *.egg-info
 .idea/
 
-*seg*
-*recon*
+*.png
 real_images/*seg*
 real_images/*recon*

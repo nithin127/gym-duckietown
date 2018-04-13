@@ -149,34 +149,6 @@ class Model(nn.Module):
     def load(self, file_name):
         self.load_state_dict(torch.load(file_name))
 
-def save_img(file_name, img):
-    from skimage import io
-
-    img = img.squeeze(0)
-    img = img.clamp(0, 1)
-    img = img.data
-    img = img.transpose(0, 2).transpose(0, 1)
-    img = np.flip(img, 0)
-    img = img * 255
-    img = img.astype(np.uint8)
-
-    io.imsave(file_name, img)
-
-def load_img(file_name):
-    from skimage import io
-
-    # Drop the alpha channel
-    img = io.imread(file_name)
-    img = img[:,:,0:3] / 255
-
-    # Flip the image vertically
-    img = np.flip(img, 0)
-
-    # Transpose the rows and columns
-    img = img.transpose(2, 0, 1)
-
-    return make_var(img)
-
 def gen_data():
     obs = env.reset().copy()
     obs = obs.transpose(2, 0, 1)
@@ -221,7 +193,6 @@ def test_model(model):
     for i in range(0, 180):
         try:
             img = load_img('real_images/img_%03d.png' % i)
-            img = img.unsqueeze(0)
             _, out = model(img, vels)
             save_img('real_images/img_%03d_recon.png' % i, out)
         except Exception as e:

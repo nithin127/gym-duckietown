@@ -4,6 +4,8 @@ import time
 from functools import reduce
 import operator
 
+from utils import *
+
 import gym_duckietown
 from gym_duckietown.envs import SimpleSimEnv
 
@@ -85,7 +87,7 @@ class Model(nn.Module):
         a = F.leaky_relu(self.a_linear1(mid))
         a = self.a_linear2(a)
 
-        return x, a
+        return x, a, mid
 
     def getAngle(self, obs):
         obs = np.ascontiguousarray(obs)
@@ -138,7 +140,7 @@ def train(model, optimizer, image, target):
     optimizer.zero_grad()
 
     # forward + backward + optimize
-    recon, angle = model(image)
+    recon, angle, enc = model(image)
 
     img_loss = (recon - image).norm(2).mean()
     ang_loss = (angle - target).norm(2).mean()
@@ -150,29 +152,6 @@ def train(model, optimizer, image, target):
     ang_error = (angle - target).abs().mean()
 
     return loss.data[0], ang_error.data[0]
-
-def save_img(file_name, img):
-    from skimage import io
-    img = img[0].clamp(0, 1).transpose(0, 2).transpose(0, 1).data
-    img = np.flip(img, 0)
-    io.imsave(file_name, img)
-
-def load_img(file_name):
-    from skimage import io
-
-    # Drop the alpha channel
-    img = io.imread(file_name)
-    img = img[:,:,0:3] / 255
-
-    img = np.flip(img, 0)
-    img = np.ascontiguousarray(img)
-    img = torch.from_numpy(img).float()
-    img = img.transpose(0, 1).transpose(0, 2)
-
-    if torch.cuda.is_available():
-        img = img.cuda()
-
-    return img
 
 if __name__ == "__main__":
     env = SimpleSimEnv()
@@ -213,17 +192,16 @@ if __name__ == "__main__":
         print('train time: %d ms' % trainTime)
         print('epoch %d, loss=%.3f, error=%.3f' % (epoch, loss, avg_error))
 
-        if epoch % 1000 == 0:
+        if epoch == 50 or epoch % 1000 == 0:
             img0 = images[0:1]
-            out0, ang0 = model(img0)
-            save_img('seg_img.png', img0)
+            out0, ang0, enc = model(img0)
+            save_img('img_sim.png', img0)
             save_img('img_recon.png', out0)
 
             for i in range(0, 200):
                 try:
                     img = load_img('real_images/img_%03d.png' % i)
-                    img = Variable(img.unsqueeze(0))
-                    out, ang = model(img)
+                    out, ang, enc = model(img)
                     save_img('real_images/img_%03d_recon.png' % i, out)
                 except Exception as e:
                     print(e)
