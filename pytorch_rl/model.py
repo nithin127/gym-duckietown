@@ -6,6 +6,13 @@ import torch.nn.functional as F
 from distributions import Categorical, DiagGaussian
 from utils import orthogonal
 
+#import supervised.autoenc_angle
+from supervised.autoenc_angle import Model as EncModel
+
+enc_model = EncModel()
+enc_model.load('trained_models/angle_model.pt')
+enc_model.cuda()
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
@@ -40,16 +47,16 @@ class CNNPolicy(FFPolicy):
 
         BOTTLENECK_SIZE = 8
 
-        self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
-        self.conv2 = nn.Conv2d(32, 32, 4, stride=1)
-        self.conv3 = nn.Conv2d(32, 32, 4, stride=1)
+        #self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
+        #self.conv2 = nn.Conv2d(32, 32, 4, stride=1)
+        #self.conv3 = nn.Conv2d(32, 32, 4, stride=1)
+        #self.linear1 = nn.Linear(32 * 9 * 14, 256)
+        #self.linear2 = nn.Linear(256, BOTTLENECK_SIZE)
 
-        self.linear1 = nn.Linear(32 * 9 * 14, 256)
-        self.linear2 = nn.Linear(256, BOTTLENECK_SIZE)
         self.linear3 = nn.Linear(BOTTLENECK_SIZE, 256)
 
-        if use_gru:
-            self.gru = nn.GRUCell(512, 512)
+        #if use_gru:
+        #    self.gru = nn.GRUCell(512, 512)
 
         self.critic_linear = nn.Linear(256, 1)
 
@@ -75,10 +82,10 @@ class CNNPolicy(FFPolicy):
     def reset_parameters(self):
         self.apply(weights_init)
 
-        relu_gain = nn.init.calculate_gain('leaky_relu')
-        self.conv1.weight.data.mul_(relu_gain)
-        self.conv2.weight.data.mul_(relu_gain)
-        self.conv3.weight.data.mul_(relu_gain)
+        #relu_gain = nn.init.calculate_gain('leaky_relu')
+        #self.conv1.weight.data.mul_(relu_gain)
+        #self.conv2.weight.data.mul_(relu_gain)
+        #self.conv3.weight.data.mul_(relu_gain)
 
         if hasattr(self, 'gru'):
             orthogonal(self.gru.weight_ih.data)
@@ -90,6 +97,8 @@ class CNNPolicy(FFPolicy):
             self.dist.fc_mean.weight.data.mul_(0.01)
 
     def forward(self, image, states, masks):
+
+        """
         batch_size = image.size(0)
 
         x = image
@@ -107,7 +116,14 @@ class CNNPolicy(FFPolicy):
 
         x = F.leaky_relu(self.linear1(conv_out))
         mid = F.leaky_relu(self.linear2(x))
-        x = F.leaky_relu(self.linear3(mid))
+        """
+
+
+        recon, angle, enc = enc_model(image)
+
+
+
+        x = F.leaky_relu(self.linear3(enc))
 
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):

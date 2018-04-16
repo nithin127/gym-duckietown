@@ -30,6 +30,7 @@ env = make_env(args.env_name, args.seed, 0, None, args.start_container)
 env = DummyVecEnv([env])
 
 actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+actor_critic.cuda()
 
 render_func = env.envs[0].render
 
@@ -56,16 +57,20 @@ def on_key_press(symbol, modifiers):
     from pyglet.window import key
     import sys
     if symbol == key.ESCAPE:
+        print('escape, closing window')
         env.close()
         sys.exit(0)
     return
 
 try:
     while True:
-        value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
-                                                    Variable(states, volatile=True),
-                                                    Variable(masks, volatile=True),
-                                                    deterministic=True)
+        value, action, _, states = actor_critic.act(
+            Variable(current_obs, volatile=True).cuda(),
+            Variable(states, volatile=True).cuda(),
+            Variable(masks, volatile=True).cuda(),
+            deterministic=True
+        )
+
         states = states.data
         cpu_actions = action.data.squeeze(1).cpu().numpy()
 
@@ -86,6 +91,7 @@ try:
 
         render_func('human')
 
-except:
+except Exception as e:
+    print(e)
     env.envs[0].unwrapped.close()
     time.sleep(0.25)
