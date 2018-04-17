@@ -43,29 +43,19 @@ class CNNPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space, use_gru):
         super(CNNPolicy, self).__init__()
 
-        #print('num_inputs=%s' % str(num_inputs))
-
         BOTTLENECK_SIZE = 8
 
-        #self.conv1 = nn.Conv2d(3, 32, 8, stride=8)
-        #self.conv2 = nn.Conv2d(32, 32, 4, stride=1)
-        #self.conv3 = nn.Conv2d(32, 32, 4, stride=1)
-        #self.linear1 = nn.Linear(32 * 9 * 14, 256)
-        #self.linear2 = nn.Linear(256, BOTTLENECK_SIZE)
+        self.linear1 = nn.Linear(BOTTLENECK_SIZE, 128)
+        self.linear2 = nn.Linear(128, 128)
 
-        self.linear3 = nn.Linear(BOTTLENECK_SIZE, 256)
-
-        #if use_gru:
-        #    self.gru = nn.GRUCell(512, 512)
-
-        self.critic_linear = nn.Linear(256, 1)
+        self.critic_linear = nn.Linear(128, 1)
 
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
-            self.dist = Categorical(256, num_outputs)
+            self.dist = Categorical(128, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
-            self.dist = DiagGaussian(256, num_outputs)
+            self.dist = DiagGaussian(128, num_outputs)
         else:
             raise NotImplementedError
 
@@ -82,11 +72,6 @@ class CNNPolicy(FFPolicy):
     def reset_parameters(self):
         self.apply(weights_init)
 
-        #relu_gain = nn.init.calculate_gain('leaky_relu')
-        #self.conv1.weight.data.mul_(relu_gain)
-        #self.conv2.weight.data.mul_(relu_gain)
-        #self.conv3.weight.data.mul_(relu_gain)
-
         if hasattr(self, 'gru'):
             orthogonal(self.gru.weight_ih.data)
             orthogonal(self.gru.weight_hh.data)
@@ -98,44 +83,10 @@ class CNNPolicy(FFPolicy):
 
     def forward(self, image, states, masks):
 
-        """
-        batch_size = image.size(0)
-
-        x = image
-
-        x = self.conv1(x)
-        x = F.leaky_relu(x)
-
-        x = self.conv2(x)
-        x = F.leaky_relu(x)
-
-        x = self.conv3(x)
-        conv_out = F.leaky_relu(x)
-        conv_out = conv_out.view(batch_size, -1)
-        #print(x.size())
-
-        x = F.leaky_relu(self.linear1(conv_out))
-        mid = F.leaky_relu(self.linear2(x))
-        """
-
-
         recon, angle, enc = enc_model(image)
 
-
-
-        x = F.leaky_relu(self.linear3(enc))
-
-        if hasattr(self, 'gru'):
-            if inputs.size(0) == states.size(0):
-                x = states = self.gru(x, states * masks)
-            else:
-                x = x.view(-1, states.size(0), x.size(1))
-                masks = masks.view(-1, states.size(0), 1)
-                outputs = []
-                for i in range(x.size(0)):
-                    hx = states = self.gru(x[i], states * masks[i])
-                    outputs.append(hx)
-                x = torch.cat(outputs, 0)
+        x = F.leaky_relu(self.linear1(enc))
+        x = F.leaky_relu(self.linear2(x))
 
         return self.critic_linear(x), x, states
 
