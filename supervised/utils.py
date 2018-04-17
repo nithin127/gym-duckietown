@@ -46,4 +46,31 @@ def load_img(file_name):
 
     return var
 
-# TODO: gen_batch with gen_data_fn
+def gen_batch(gen_data_fn, batch_size=2):
+    """
+    Returns a tuple of PyTorch Variable objects
+    gen_data is expected to produce a tuple
+    """
+
+    assert batch_size > 0
+
+    data = []
+    for i in range(0, batch_size):
+        data.append(gen_data_fn())
+
+    # Create arrays of data elements for each variable
+    num_vars = len(data[0])
+    arrays = []
+    for idx in range(0, num_vars):
+        vals = []
+        for datum in data:
+            vals.append(datum[idx])
+        arrays.append(vals)
+
+    # Make a variable out of each element array
+    vars = []
+    for array in arrays:
+        var = make_var(np.stack(array))
+        vars.append(var)
+
+    return tuple(vars)

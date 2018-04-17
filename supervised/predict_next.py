@@ -162,25 +162,8 @@ def gen_data():
 
     return obs, vels, obs2
 
-def gen_batch(batch_size=2):
-    obs = []
-    vels = []
-    obs2 = []
-
-    for i in range(0, batch_size):
-        o, v, o2 = gen_data()
-        obs.append(o)
-        vels.append(v)
-        obs2.append(o2)
-
-    obs = make_var(np.stack(obs))
-    vels = make_var(np.stack(vels))
-    obs2 = make_var(np.stack(obs2))
-
-    return obs, vels, obs2
-
 def test_model(model):
-    obs, vels, obs2 = gen_batch()
+    obs, vels, obs2 = gen_batch(gen_data)
     img0 = obs[0:1]
     vels = make_var(np.array([0.8, 0.8])).unsqueeze(0)
 
@@ -203,7 +186,7 @@ def train_loop(model, optimizer, loss_fn, num_epochs):
 
     for epoch in range(1, num_epochs+1):
         startTime = time.time()
-        obs, vels, obs2 = gen_batch()
+        obs, vels, obs2 = gen_batch(gen_data)
         genTime = int(1000 * (time.time() - startTime))
 
         startTime = time.time()
