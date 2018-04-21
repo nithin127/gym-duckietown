@@ -42,6 +42,15 @@ except OSError:
     for f in files:
         os.remove(f)
 
+save_path = os.path.join(args.save_dir, args.algo)
+
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+
+file_stats = open(os.path.join(save_path, args.env_name + "_stats.txt"), "w+")
+file_stats.write("timesteps, running avg reward, entropy, value loss, policy loss")
+file_stats.close()
+
 def main():
     os.environ['OMP_NUM_THREADS'] = '1'
 
@@ -238,11 +247,6 @@ def main():
         rollouts.after_update()
 
         if j % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
 
             # A really ugly way to save a model to CPU
             save_model = actor_critic
@@ -271,6 +275,10 @@ def main():
                     action_loss.data[0]
                 )
             )
+            file_stats = open(os.path.join(save_path, args.env_name + "_stats.txt"), "a")
+            file_stats.write("{}\t{}\t{}\t{}\t{}".format(total_num_steps, reward_avg, dist_entropy.data[0],
+                            value_loss.data[0], action_loss.data[0]))
+            file_stats.close()
 
             """
             print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
