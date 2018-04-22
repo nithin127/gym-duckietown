@@ -276,7 +276,7 @@ def main():
                 )
             )
             file_stats = open(os.path.join(save_path, args.env_name + "_stats.txt"), "a")
-            file_stats.write("{}\t{}\t{}\t{}\t{}".format(total_num_steps, reward_avg, dist_entropy.data[0],
+            file_stats.write("\n{}\t{}\t{}\t{}\t{}".format(total_num_steps, reward_avg, dist_entropy.data[0],
                             value_loss.data[0], action_loss.data[0]))
             file_stats.close()
 

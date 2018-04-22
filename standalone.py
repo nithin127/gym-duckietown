@@ -39,6 +39,8 @@ def save_img(img):
     save_numpy_img('img_%03d.png' % lastImgNo, img)
     lastImgNo += 1
 
+avg_reward = 0
+
 @env.window.event
 def on_key_press(symbol, modifiers):
     from pyglet.window import key
@@ -69,7 +71,8 @@ def on_key_press(symbol, modifiers):
     if action is not None:
         print('stepping')
         obs, reward, done, info = env.step(action)
-        print('step_count = %s, reward=%.3f' % (env.step_count, reward))
+        avg_reward = 0.99*avg_reward + 0.01*reward
+        print('step_count = %s, reward=%.3f, avg_reward=%.3f\n' % (env.step_count, reward, avg_reward))
 
         env.render()
 

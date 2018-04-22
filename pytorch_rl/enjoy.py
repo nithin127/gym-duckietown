@@ -60,6 +60,8 @@ def on_key_press(symbol, modifiers):
         sys.exit(0)
     return
 
+avg_reward = 0.0
+
 try:
     while True:
         value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
@@ -69,11 +71,12 @@ try:
         states = states.data
         cpu_actions = action.data.squeeze(1).cpu().numpy()
 
-        print(cpu_actions)
-        #print(np.tanh(cpu_actions[0]))
-
+        
         # Obser reward and next obs
         obs, reward, done, _ = env.step(cpu_actions)
+        
+        avg_reward = 0.99*avg_reward + 0.01*reward
+        print("action: {}, avg_reward{}\n".format(cpu_actions, reward))
         time.sleep(0.08)
 
         masks.fill_(0.0 if done else 1.0)
