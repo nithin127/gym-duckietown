@@ -4,20 +4,17 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, state_size):
-        self.observations = torch.zeros(num_steps + 1, num_processes, *obs_shape)
-        self.states = torch.zeros(num_steps + 1, num_processes, state_size)
-        self.rewards = torch.zeros(num_steps, num_processes, 1)
-        self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
-        self.returns = torch.zeros(num_steps + 1, num_processes, 1)
-        self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
+        self.num_steps = num_steps
+        self.num_processes = num_processes
+        self.obs_shape = obs_shape
+        self.state_size = state_size
+        self.action_space = action_space
         if action_space.__class__.__name__ == 'Discrete':
-            action_shape = 1
+            self.action_shape = 1
         else:
-            action_shape = action_space.shape[0]
-        self.actions = torch.zeros(num_steps, num_processes, action_shape)
-        if action_space.__class__.__name__ == 'Discrete':
-            self.actions = self.actions.long()
-        self.masks = torch.ones(num_steps + 1, num_processes, 1)
+            self.action_shape = action_space.shape[0]
+        
+        self.reset()
 
     def cuda(self):
         self.observations = self.observations.cuda()
@@ -37,6 +34,19 @@ class RolloutStorage(object):
         self.value_preds[step].copy_(value_pred)
         self.rewards[step].copy_(reward)
         self.masks[step + 1].copy_(mask)
+
+    def reset(self):
+        self.observations = torch.zeros(self.num_steps + 1, self.num_processes, *self.obs_shape)
+        self.states = torch.zeros(self.num_steps + 1, self.num_processes, self.state_size)
+        self.rewards = torch.zeros(self.num_steps, self.num_processes, 1)
+        self.value_preds = torch.zeros(self.num_steps + 1, self.num_processes, 1)
+        self.returns = torch.zeros(self.num_steps + 1, self.num_processes, 1)
+        self.action_log_probs = torch.zeros(self.num_steps, self.num_processes, 1)
+        self.actions = torch.zeros(self.num_steps, self.num_processes, self.action_shape)
+        if self.action_space.__class__.__name__ == 'Discrete':
+            self.actions = self.actions.long()
+        self.masks = torch.ones(self.num_steps + 1, self.num_processes, 1)
+
 
     def after_update(self):
         self.observations[0].copy_(self.observations[-1])

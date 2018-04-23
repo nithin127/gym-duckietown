@@ -39,8 +39,6 @@ def save_img(img):
     save_numpy_img('img_%03d.png' % lastImgNo, img)
     lastImgNo += 1
 
-avg_reward = 0
-
 @env.window.event
 def on_key_press(symbol, modifiers):
     from pyglet.window import key
@@ -67,6 +65,9 @@ def on_key_press(symbol, modifiers):
         sys.exit(0)
     else:
         return
+
+    if not "avg_reward" in locals():
+        avg_reward = 0.5
 
     if action is not None:
         print('stepping')

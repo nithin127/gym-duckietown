@@ -22,6 +22,10 @@ from model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
 
+from utils import MyContainer, create_folder
+from logger import Logger
+
+
 args = get_args()
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
@@ -43,13 +47,32 @@ except OSError:
         os.remove(f)
 
 save_path = os.path.join(args.save_dir, args.algo)
+log_path = os.path.join(args.log_dir, args.algo)
 
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
+create_folder(save_path)
+create_folder(log_path)
 
-file_stats = open(os.path.join(save_path, args.env_name + "_stats.txt"), "w+")
-file_stats.write("timesteps, running avg reward, entropy, value loss, policy loss")
-file_stats.close()
+logger = Logger(log_path)
+
+
+tr = MyContainer()
+tr.train_reward_avg = [[],[]]
+#tr.train_episode_len = [[],[]]
+tr.pg_loss = [[],[]]
+tr.val_loss = [[],[]]
+tr.entropy_loss = [[],[]]
+#tr.first_val = [[],[]]
+tr.test_reward = [[],[]]
+tr.test_episode_len = [[],[]]
+tr.iterations_done = 0
+tr.global_steps_done = 0
+tr.episodes_done = 0
+
+
+def append_to(tlist, tr, val):
+        tlist[0].append(val)
+        tlist[1].append([tr.episodes_done, tr.global_steps_done, tr.iterations_done])
+
 
 def main():
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -62,10 +85,15 @@ def main():
     envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.start_container)
                 for i in range(args.num_processes)]
 
+    test_envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.start_container)
+                for i in range(args.num_processes)]
+    
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)
+        test_envs = SubprocVecEnv(test_envs)
     else:
         envs = DummyVecEnv(envs)
+        test_envs = DummyVecEnv(test_envs)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
@@ -105,13 +133,20 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
-
-    def update_current_obs(obs):
+    rollouts_test = RolloutStorage(args.num_steps_test, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    current_obs_test = torch.zeros(args.num_processes, *obs_shape)
+            
+    def update_current_obs(obs, test = False):
         shape_dim0 = envs.observation_space.shape[0]
         obs = torch.from_numpy(obs).float()
-        if args.num_stack > 1:
-            current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-        current_obs[:, -shape_dim0:] = obs
+        if not test:
+            if args.num_stack > 1:
+                current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
+            current_obs[:, -shape_dim0:] = obs
+        else:
+            if args.num_stack > 1:
+                current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
+            current_obs_test[:, -shape_dim0:] = obs
 
     obs = envs.reset()
     update_current_obs(obs)
@@ -125,7 +160,9 @@ def main():
 
     if args.cuda:
         current_obs = current_obs.cuda()
+        current_obs_test = current_obs_test.cuda()
         rollouts.cuda()
+        rollouts_test.cuda()
 
     start = time.time()
     for j in range(num_updates):
@@ -151,6 +188,9 @@ def main():
             final_rewards *= masks
             final_rewards += (1 - masks) * episode_rewards
             episode_rewards *= masks
+            
+            tr.episodes_done += args.num_processes - masks.sum()
+
 
             if args.cuda:
                 masks = masks.cuda()
@@ -168,6 +208,7 @@ def main():
                                   Variable(rollouts.masks[-1], volatile=True))[0].data
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
+        tr.iterations_done += 1
 
         if args.algo in ['a2c', 'acktr']:
             values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
@@ -258,27 +299,82 @@ def main():
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
+            total_test_reward_list = []
+            step_test_list = []
+
+            for _ in range(args.num_tests):
+                test_obs = test_envs.reset()
+                update_current_obs(test_obs, test = True)
+                rollouts_test.observations[0].copy_(current_obs_test)
+                step_test = 0
+                total_test_reward = 0
+
+                while step_test < args.num_steps_test:
+                    value_test, action_test, action_log_prob_test, states_test = actor_critic.act(Variable(rollouts_test.observations[step_test], volatile=True),
+                                                                          Variable(rollouts_test.states[step_test], volatile=True),
+                                                                          Variable(rollouts_test.masks[step_test], volatile=True))
+                    cpu_actions_test = action_test.data.squeeze(1).cpu().numpy()
+
+                    # Observation, reward and next obs
+                    obs_test, reward_test, done_test, info_test = test_envs.step(cpu_actions_test)
+
+                    # masks here doesn't really matter, but still
+                    masks_test = torch.FloatTensor([[0.0] if done_test_ else [1.0] for done_test_ in done_test])
+                    
+                    # Maxime: clip the reward within [0,1] for more reliable training
+                    # This code deals poorly with large reward values
+                    reward_test = np.clip(reward_test, a_min=0, a_max=None) / 400
+                    
+                    step_test += 1
+                    total_test_reward += reward_test[0]
+                    reward_test = torch.from_numpy(np.expand_dims(np.stack(reward_test), 1)).float()
+
+                    update_current_obs(obs_test)
+                    rollouts_test.insert(step_test, current_obs_test, states_test.data, action_test.data, action_log_prob_test.data,\
+                     value_test.data, reward_test, masks_test)
+
+                    if done_test:
+                        break
+
+                rollouts_test.reset()
+                total_test_reward_list.append(total_test_reward)
+                step_test_list.append(step_test)
+
+            append_to(tr.test_reward, tr, sum(total_test_reward_list)/args.num_tests)
+            append_to(tr.test_episode_len, tr, sum(step_test_list)/args.num_tests)
+
+            logger.log_scalar_rl("test_reward", tr.test_reward[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
+            logger.log_scalar_rl("test_episode_len", tr.test_episode_len[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
+
+            # Add code to save the pickle now 
+
         if j % args.log_interval == 0:
             reward_avg = 0.99 * reward_avg + 0.01 * final_rewards.mean()
             end = time.time()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
+            tr.global_steps_done = (j + 1) * args.num_processes * args.num_steps
 
             print(
                 "Updates {}, num timesteps {}, FPS {}, running avg reward {:.3f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
                 format(
                     j,
-                    total_num_steps,
-                    int(total_num_steps / (end - start)),
+                    tr.global_steps_done,
+                    int(tr.global_steps_done / (end - start)),
                     reward_avg,
                     dist_entropy.data[0],
                     value_loss.data[0],
                     action_loss.data[0]
                 )
             )
-            file_stats = open(os.path.join(save_path, args.env_name + "_stats.txt"), "a")
-            file_stats.write("\n{}\t{}\t{}\t{}\t{}".format(total_num_steps, reward_avg, dist_entropy.data[0],
-                            value_loss.data[0], action_loss.data[0]))
-            file_stats.close()
+
+            append_to(tr.pg_loss, tr, action_loss.data[0])
+            append_to(tr.val_loss, tr, value_loss.data[0])
+            append_to(tr.entropy_loss, tr, dist_entropy.data[0])
+            append_to(tr.train_reward_avg, tr, reward_avg)
+
+            logger.log_scalar_rl("train_pg_loss", tr.pg_loss[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
+            logger.log_scalar_rl("train_val_loss", tr.val_loss[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
+            logger.log_scalar_rl("train_entropy_loss", tr.entropy_loss[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
+            logger.log_scalar_rl("train_reward_avg", tr.train_reward_avg[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
 
             """
             print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
