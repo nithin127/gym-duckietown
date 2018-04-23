@@ -68,6 +68,8 @@ def get_args():
 
     parser.add_argument('--start-container', action='store_true', default=False,
                         help='start the Duckietown container image')
+    parser.add_argument('--resume-experiment', action='store_true', default=False,
+                        help='start the Duckietown container image')        
 
     args = parser.parse_args()
 

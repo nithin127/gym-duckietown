@@ -54,7 +54,6 @@ create_folder(log_path)
 
 logger = Logger(log_path)
 
-
 tr = MyContainer()
 tr.train_reward_avg = [[],[]]
 #tr.train_episode_len = [[],[]]
@@ -165,6 +164,11 @@ def main():
         rollouts_test.cuda()
 
     start = time.time()
+
+    if args.resume_experiment:
+        actor_critic, ob_rms = torch.load(os.path.join(args.save_path, args.env_name + ".pt"))
+        tr.load(os.path.join(log_dir, args.env_name + ".p"))
+
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -346,7 +350,8 @@ def main():
             logger.log_scalar_rl("test_reward", tr.test_reward[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
             logger.log_scalar_rl("test_episode_len", tr.test_episode_len[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
 
-            # Add code to save the pickle now 
+            # Saving all the MyContainer variables
+            tr.save(os.path.join(log_dir, args.env_name + ".p"))
 
         if j % args.log_interval == 0:
             reward_avg = 0.99 * reward_avg + 0.01 * final_rewards.mean()
