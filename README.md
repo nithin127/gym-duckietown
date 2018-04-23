@@ -1,16 +1,29 @@
 # Gym-Duckietown
 
-[Duckietown](http://duckietown.mit.edu/) self-driving car simulator environment for OpenAI Gym.
+[Duckietown](http://duckietown.mit.edu/) self-driving car simulator environments for OpenAI Gym.
+
+Please use this bibtex if you want to cite this repository in your publications:
+
+```
+@misc{gym_duckietown,
+  author = {Maxime Chevalier-Boisvert, Florian Golemo, Yanjun Cao, Liam Paull},
+  title = {Duckietown Environments for OpenAI Gym},
+  year = {2018},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/duckietown/gym-duckietown}},
+}
+```
 
 Introduction
 ------------
 
 This repository contains 3 different gym environments:
-- `Duckie-SimpleSim-v0`
+- `SimpleSim-v0`
 - `Duckietown-v0`
 - `Duckiebot-v0`
 
-The `Duckie-SimpleSim-v0` environment is a simple lane-following simulator
+The `SimpleSim-v0` environment is a simple lane-following simulator
 written in OpenGL (Pyglet). It draws a loop of road with left and right turns,
 along with obstacles in the background. It implements various forms of
 [domain-randomization](https://blog.openai.com/spam-detection-in-the-physical-world/)
@@ -29,7 +42,7 @@ install the software found in the [duck-remote-iface](https://github.com/maximec
 repository on your Duckiebot.
 
 If you simply want to experiment with lane-following, I would strongly
-recommend that you start with the `Duckie-SimpleSim-v0` environment, because
+recommend that you start with the `SimpleSim-v0` environment, because
 it is fast, relatively easy to install, and we know for a fact that
 reinforcement learning policies can be successfully trained on it.
 
@@ -69,7 +82,7 @@ To run the standalone UI application, which allows you to control the simulation
 robot manually:
 
 ```python3
-./standalone.py --env-name Duckie-SimpleSim-v0
+./standalone.py --env-name SimpleSim-v0
 ```
 
 The `standalone.py` application will launch the Gym environment, display
