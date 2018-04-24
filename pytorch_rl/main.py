@@ -166,8 +166,9 @@ def main():
     start = time.time()
 
     if args.resume_experiment:
-        actor_critic, ob_rms = torch.load(os.path.join(args.save_path, args.env_name + ".pt"))
-        tr.load(os.path.join(log_dir, args.env_name + ".p"))
+        print("\n############## Loading saved model ##############\n")
+        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + ".pt"))
+        tr.load(os.path.join(args.log_dir, args.env_name + ".p"))
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -329,7 +330,6 @@ def main():
                     # This code deals poorly with large reward values
                     reward_test = np.clip(reward_test, a_min=0, a_max=None) / 400
                     
-                    step_test += 1
                     total_test_reward += reward_test[0]
                     reward_test = torch.from_numpy(np.expand_dims(np.stack(reward_test), 1)).float()
 
@@ -337,6 +337,8 @@ def main():
                     rollouts_test.insert(step_test, current_obs_test, states_test.data, action_test.data, action_log_prob_test.data,\
                      value_test.data, reward_test, masks_test)
 
+                    step_test += 1
+                    
                     if done_test:
                         break
 
@@ -351,7 +353,7 @@ def main():
             logger.log_scalar_rl("test_episode_len", tr.test_episode_len[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
 
             # Saving all the MyContainer variables
-            tr.save(os.path.join(log_dir, args.env_name + ".p"))
+            tr.save(os.path.join(args.log_dir, args.env_name + ".p"))
 
         if j % args.log_interval == 0:
             reward_avg = 0.99 * reward_avg + 0.01 * final_rewards.mean()
