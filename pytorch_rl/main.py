@@ -138,6 +138,11 @@ def main():
     else:
         action_shape = envs.action_space.shape[0]
 
+    if args.resume_experiment:
+        print("\n############## Loading saved model ##############\n")
+        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + args.save_tag + ".pt"))
+        tr.load(os.path.join(log_path, args.env_name + args.save_tag + ".p"))
+    
     if args.cuda:
         actor_critic.cuda()
 
@@ -150,11 +155,7 @@ def main():
 
     print(obs_shape)
 
-    if args.resume_experiment:
-        print("\n############## Loading saved model ##############\n")
-        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + args.save_tag + ".pt"))
-        tr.load(os.path.join(log_path, args.env_name + args.save_tag + ".p"))
-
+    
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     rollouts_test = RolloutStorage(args.num_steps_test, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
