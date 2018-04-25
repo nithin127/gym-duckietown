@@ -96,16 +96,23 @@ A sample command to launch training is:
 python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5
 ```
 
-And in case you want to use the latent representation, as trained by a (beta/beta-tc)VAE, then use:
+And in case you want to use the latent representation as trained by a (beta/beta-tc)VAE, then use:
 ```
-python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --resume-experiment --saved-encoder-model trained_models/beta-vae_b5_h100.ckpt
+python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --saved-encoder-model trained_models/beta-vae_b5_h100.ckpt
 ```
+
+You can also use the `--resume-experiment`, if you want to continue the training
+
 See representation_analysis for more details on training the VAEs
 
 Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running:
 
 ```
 python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c
+```
+And again, in case you want to use the latent representation, as trained by a (beta/beta-tc)VAE, then use:
+```
+python3 pytorch_rl/enjoy.py --env-name Duckie-SimpleSim-Discrete-v0 --num-stack 1 --load-dir trained_models/a2c --saved-encoder-model trained_models/beta-vae_b5_h100.ckpt
 ```
 
 Reinforcement Learning Notes

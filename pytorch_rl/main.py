@@ -74,6 +74,7 @@ if args.saved_encoder_model:
         model = loaded_state['model']
         vae = VAE(z_dim=args.latent_space_size, use_cuda=args.cuda) 
         vae.load_state_dict(model)
+        args.save_tag = "_"+args.saved_encoder_model.split("/")[-1].split(".")[0]
 
         if args.cuda:
             vae.cuda()
@@ -149,6 +150,11 @@ def main():
 
     print(obs_shape)
 
+    if args.resume_experiment:
+        print("\n############## Loading saved model ##############\n")
+        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + args.save_tag + ".pt"))
+        tr.load(os.path.join(log_path, args.env_name + args.save_tag + ".p"))
+
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     rollouts_test = RolloutStorage(args.num_steps_test, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
@@ -160,25 +166,15 @@ def main():
             shape_dim0 = 1
             obs, _ = vae.encode(Variable(torch.cuda.FloatTensor(obs)))
             obs = obs.data.cpu().numpy()
-            obs = torch.from_numpy(obs).float()
-            if not test:
-                if args.num_stack > 1:
-                    current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-                current_obs[:, -shape_dim0:] = obs
-            else:
-                if args.num_stack > 1:
-                    current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
-                current_obs_test[:, -shape_dim0:] = obs
+        obs = torch.from_numpy(obs).float()
+        if not test:
+            if args.num_stack > 1:
+                current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
+            current_obs[:, -shape_dim0:] = obs
         else:
-            obs = torch.from_numpy(obs).float()
-            if not test:
-                if args.num_stack > 1:
-                    current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-                current_obs[:, -shape_dim0:] = obs
-            else:
-                if args.num_stack > 1:
-                    current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
-                current_obs_test[:, -shape_dim0:] = obs
+            if args.num_stack > 1:
+                current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
+            current_obs_test[:, -shape_dim0:] = obs
 
     obs = envs.reset()
     update_current_obs(obs)
@@ -196,11 +192,6 @@ def main():
         rollouts_test.cuda()
 
     start = time.time()
-
-    if args.resume_experiment:
-        print("\n############## Loading saved model ##############\n")
-        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + args.save_tag + ".pt"))
-        tr.load(os.path.join(args.log_dir, args.env_name + args.save_tag + ".p"))
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -385,7 +376,7 @@ def main():
             logger.log_scalar_rl("test_episode_len", tr.test_episode_len[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
 
             # Saving all the MyContainer variables
-            tr.save(os.path.join(args.log_dir, args.env_name + args.save_tag + ".p"))
+            tr.save(os.path.join(log_path, args.env_name + args.save_tag + ".p"))
 
         if j % args.log_interval == 0:
             reward_avg = 0.99 * reward_avg + 0.01 * final_rewards.mean()

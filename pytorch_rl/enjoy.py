@@ -9,6 +9,7 @@ from torch.autograd import Variable
 from pytorch_rl.vec_env.dummy_vec_env import DummyVecEnv
 
 from envs import make_env
+from representation_analysis.models import VAE
 
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--seed', type=int, default=1,
@@ -23,12 +24,35 @@ parser.add_argument('--load-dir', default='./trained_models/',
                     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument('--start-container', action='store_true', default=False,
                     help='start the Duckietown container image')
-parser.add_argument('--save-tag', type=str, help='Additional string added to save files')
+parser.add_argument('--saved-encoder-model', type=str, help='Additional string added to save files')
+parser.add_argument('--save-tag', type=str, default = "", help='Additional string added to save files')
+parser.add_argument('--latent-space-size', type=int, default=100,
+                        help='Size of latent code (default: 100)')
+parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
 
 args = parser.parse_args()
+args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 env = make_env(args.env_name, args.seed, 0, None, args.start_container)
 env = DummyVecEnv([env])
+
+if args.saved_encoder_model:
+    try:
+        loaded_state = torch.load(args.saved_encoder_model)
+        model = loaded_state['model']
+        
+        vae = VAE(z_dim=args.latent_space_size, use_cuda=args.cuda) 
+        vae.load_state_dict(model)
+        args.save_tag = "_"+args.saved_encoder_model.split("/")[-1].split(".")[0]
+
+        if args.cuda:
+            vae.cuda()
+
+        print('encoder model found and loaded successfully')
+    except:
+        print('problem loading encoder model. Check file!')
+        exit(1)
 
 actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.env_name + args.save_tag + ".pt"))
 
@@ -36,12 +60,19 @@ render_func = env.envs[0].render
 
 obs_shape = env.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+if args.saved_encoder_model:
+    obs_shape = (args.num_stack, args.latent_space_size)
+
 current_obs = torch.zeros(1, *obs_shape)
 states = torch.zeros(1, actor_critic.state_size)
 masks = torch.zeros(1, 1)
 
 def update_current_obs(obs):
     shape_dim0 = env.observation_space.shape[0]
+    if args.saved_encoder_model:
+        shape_dim0 = 1
+        obs, _ = vae.encode(Variable(torch.cuda.FloatTensor(obs)))
+        obs = obs.data.cpu().numpy()    
     obs = torch.from_numpy(obs).float()
     if args.num_stack > 1:
         current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
@@ -90,7 +121,6 @@ try:
 
         render_func('human')
 
-except Exception, err:
-    print Exception, err
+except:
     env.envs[0].unwrapped.close()
     time.sleep(0.25)
