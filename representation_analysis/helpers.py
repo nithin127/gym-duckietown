@@ -1,6 +1,10 @@
 import torch
 from torch import distributions
 import numpy as np
+import pyro.distributions as dist
+#import pyro
+#from torch.autograd import Variable
+
 
 def log_sum_exp(value):
     m = torch.max(value)
@@ -9,8 +13,8 @@ def log_sum_exp(value):
 
 
 def logsumexp(inputs, dim=None, keepdim=False):
-    """Numerically stable logsumexp.
 
+    """Numerically stable logsumexp.
     Args:
         inputs: A Variable with any shape.
         dim: An integer.
@@ -31,7 +35,6 @@ def logsumexp(inputs, dim=None, keepdim=False):
     if not keepdim:
         outputs = outputs.squeeze(dim)
     return outputs
-
 
 
 def compute_total_correlation(N, mu, log_var, z):
