@@ -23,13 +23,14 @@ parser.add_argument('--load-dir', default='./trained_models/',
                     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument('--start-container', action='store_true', default=False,
                     help='start the Duckietown container image')
+parser.add_argument('--save-tag', type=str, help='Additional string added to save files')
 
 args = parser.parse_args()
 
 env = make_env(args.env_name, args.seed, 0, None, args.start_container)
 env = DummyVecEnv([env])
 
-actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.env_name + args.save_tag + ".pt"))
 
 render_func = env.envs[0].render
 
@@ -89,6 +90,7 @@ try:
 
         render_func('human')
 
-except:
+except Exception, err:
+    print Exception, err
     env.envs[0].unwrapped.close()
     time.sleep(0.25)

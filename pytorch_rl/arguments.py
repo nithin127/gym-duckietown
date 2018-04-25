@@ -70,12 +70,13 @@ def get_args():
                         help='start the Duckietown container image')
     parser.add_argument('--resume-experiment', action='store_true', default=False,
                         help='start the Duckietown container image')        
-
+    parser.add_argument('--save-tag', type=str, help='Additional string added to save files')
+    
     # VAE Related
 
     parser.add_argument('--latent-space-size', type=int, default=100,
                         help='Size of latent code (default: 100)')
-    parser.add_argument('--saved-encoder-model', type=str, default='./trained_models/beta-vae_b5_h100.ckpt', help='Save file to use')
+    parser.add_argument('--saved-encoder-model', type=str, help='Save file to use')
     
 
     args = parser.parse_args()

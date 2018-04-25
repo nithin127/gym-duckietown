@@ -22,8 +22,9 @@ from model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
 
-from utils import MyContainer, create_folder
 from logger import Logger
+from utils import MyContainer, create_folder
+from representation_analysis.models import VAE
 
 
 args = get_args()
@@ -69,9 +70,6 @@ tr.episodes_done = 0
 
 if args.saved_encoder_model:
     try:
-        import pdb
-        pdb.set_trace()
-
         loaded_state = torch.load(args.saved_encoder_model)
         model = loaded_state['model']
         vae = VAE(z_dim=args.latent_space_size, use_cuda=args.cuda) 
@@ -82,7 +80,7 @@ if args.saved_encoder_model:
 
         print('encoder model found and loaded successfully')
     except:
-        print('problem loading encoder model. Check file! You piece of shit. Cant do anything properly. Smh')
+        print('problem loading encoder model. Check file!')
         exit(1)
 
 
@@ -115,6 +113,9 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
+    if args.saved_encoder_model:
+        obs_shape = (args.num_stack, args.latent_space_size)
+
     obs_numel = reduce(operator.mul, obs_shape, 1)
 
     if len(obs_shape) == 3 and obs_numel > 1024:
@@ -122,11 +123,8 @@ def main():
     else:
         assert not args.recurrent_policy, \
             "Recurrent policy is not implemented for the MLP controller"
-        if not args.saved_encoder_model:
-            actor_critic = MLPPolicy(obs_numel, envs.action_space)
-        else:
-            actor_critic = MLPPolicy(args.latent_space_size, envs.action_space)
-
+        actor_critic = MLPPolicy(obs_numel, envs.action_space)
+        
     modelSize = 0
     for p in actor_critic.parameters():
         pSize = reduce(operator.mul, p.size(), 1)
@@ -152,29 +150,38 @@ def main():
     print(obs_shape)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
-    current_obs = torch.zeros(args.num_processes, *obs_shape)
     rollouts_test = RolloutStorage(args.num_steps_test, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    current_obs = torch.zeros(args.num_processes, *obs_shape)
     current_obs_test = torch.zeros(args.num_processes, *obs_shape)
-            
+
     def update_current_obs(obs, test = False):
         shape_dim0 = envs.observation_space.shape[0]
-        import pdb
-        pdb.set_trace()
         if args.saved_encoder_model:
-            _, _, _, obs = vae(obs)
-        obs = torch.from_numpy(obs).float()
-        if not test:
-            if args.num_stack > 1:
-                current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-            current_obs[:, -shape_dim0:] = obs
+            shape_dim0 = 1
+            obs, _ = vae.encode(Variable(torch.cuda.FloatTensor(obs)))
+            obs = obs.data.cpu().numpy()
+            obs = torch.from_numpy(obs).float()
+            if not test:
+                if args.num_stack > 1:
+                    current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
+                current_obs[:, -shape_dim0:] = obs
+            else:
+                if args.num_stack > 1:
+                    current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
+                current_obs_test[:, -shape_dim0:] = obs
         else:
-            if args.num_stack > 1:
-                current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
-            current_obs_test[:, -shape_dim0:] = obs
+            obs = torch.from_numpy(obs).float()
+            if not test:
+                if args.num_stack > 1:
+                    current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
+                current_obs[:, -shape_dim0:] = obs
+            else:
+                if args.num_stack > 1:
+                    current_obs_test[:, :-shape_dim0] = current_obs_test[:, shape_dim0:]
+                current_obs_test[:, -shape_dim0:] = obs
 
     obs = envs.reset()
     update_current_obs(obs)
-
     rollouts.observations[0].copy_(current_obs)
 
     # These variables are used to compute average rewards for all processes.
@@ -192,8 +199,8 @@ def main():
 
     if args.resume_experiment:
         print("\n############## Loading saved model ##############\n")
-        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + ".pt"))
-        tr.load(os.path.join(args.log_dir, args.env_name + ".p"))
+        actor_critic, ob_rms = torch.load(os.path.join(save_path, args.env_name + args.save_tag + ".pt"))
+        tr.load(os.path.join(args.log_dir, args.env_name + args.save_tag + ".p"))
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -327,7 +334,7 @@ def main():
             save_model = [save_model,
                             hasattr(envs, 'ob_rms') and envs.ob_rms or None]
 
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+            torch.save(save_model, os.path.join(save_path, args.env_name + args.save_tag + ".pt"))
 
             total_test_reward_list = []
             step_test_list = []
@@ -378,7 +385,7 @@ def main():
             logger.log_scalar_rl("test_episode_len", tr.test_episode_len[0], args.sliding_wsize, [tr.episodes_done, tr.global_steps_done, tr.iterations_done])
 
             # Saving all the MyContainer variables
-            tr.save(os.path.join(args.log_dir, args.env_name + ".p"))
+            tr.save(os.path.join(args.log_dir, args.env_name + args.save_tag + ".p"))
 
         if j % args.log_interval == 0:
             reward_avg = 0.99 * reward_avg + 0.01 * final_rewards.mean()
