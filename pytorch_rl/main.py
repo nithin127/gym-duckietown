@@ -67,6 +67,24 @@ tr.iterations_done = 0
 tr.global_steps_done = 0
 tr.episodes_done = 0
 
+if args.saved_encoder_model:
+    try:
+        import pdb
+        pdb.set_trace()
+
+        loaded_state = torch.load(args.saved_encoder_model)
+        model = loaded_state['model']
+        vae = VAE(z_dim=args.latent_space_size, use_cuda=args.cuda) 
+        vae.load_state_dict(model)
+
+        if args.cuda:
+            vae.cuda()
+
+        print('encoder model found and loaded successfully')
+    except:
+        print('problem loading encoder model. Check file! You piece of shit. Cant do anything properly. Smh')
+        exit(1)
+
 
 def append_to(tlist, tr, val):
         tlist[0].append(val)
@@ -104,7 +122,10 @@ def main():
     else:
         assert not args.recurrent_policy, \
             "Recurrent policy is not implemented for the MLP controller"
-        actor_critic = MLPPolicy(obs_numel, envs.action_space)
+        if not args.saved_encoder_model:
+            actor_critic = MLPPolicy(obs_numel, envs.action_space)
+        else:
+            actor_critic = MLPPolicy(args.latent_space_size, envs.action_space)
 
     modelSize = 0
     for p in actor_critic.parameters():
@@ -137,6 +158,10 @@ def main():
             
     def update_current_obs(obs, test = False):
         shape_dim0 = envs.observation_space.shape[0]
+        import pdb
+        pdb.set_trace()
+        if args.saved_encoder_model:
+            _, _, _, obs = vae(obs)
         obs = torch.from_numpy(obs).float()
         if not test:
             if args.num_stack > 1:
@@ -342,7 +367,7 @@ def main():
                     if done_test:
                         break
                 
-                #rollouts_test.reset()
+                #rollouts_test.reset() # Need to reinitialise with .cuda(); don't forget
                 total_test_reward_list.append(total_test_reward)
                 step_test_list.append(step_test)
 

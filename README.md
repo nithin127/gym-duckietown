@@ -96,6 +96,12 @@ A sample command to launch training is:
 python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5
 ```
 
+And in case you want to use the latent representation, as trained by a (beta/beta-tc)VAE, then use:
+```
+python3 pytorch_rl/main.py --no-vis --env-name Duckie-SimpleSim-Discrete-v0 --num-processes 1 --num-stack 1 --num-steps 20 --algo a2c --lr 0.0002 --max-grad-norm 0.5 --resume-experiment --saved-encoder-model trained_models/beta-vae_b5_h100.ckpt
+```
+See representation_analysis for more details on training the VAEs
+
 Then, to visualize the results of training, you can run the following command. Note that you can do this while the training process is still running:
 
 ```

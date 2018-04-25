@@ -23,4 +23,4 @@ will take a while
 
 1) From `gym_duckietown` run the following command:
 
-``` python  depricated/train_vae.py```
+``` python  representation_analysis/depricated/train_vae.py```
