@@ -341,8 +341,8 @@ def main():
                     
                     if done_test:
                         break
-
-                rollouts_test.reset()
+                
+                #rollouts_test.reset()
                 total_test_reward_list.append(total_test_reward)
                 step_test_list.append(step_test)
 
