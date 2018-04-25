@@ -74,7 +74,7 @@ if args.saved_encoder_model:
         model = loaded_state['model']
         vae = VAE(z_dim=args.latent_space_size, use_cuda=args.cuda) 
         vae.load_state_dict(model)
-        args.save_tag = "_"+args.saved_encoder_model.split("/")[-1].split(".")[0]
+        args.save_tag = "_"+args.saved_encoder_model.split("/")[-1].split(".")[0] + "_" + str(args.seed)
 
         if args.cuda:
             vae.cuda()

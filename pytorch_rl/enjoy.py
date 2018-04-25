@@ -25,7 +25,7 @@ parser.add_argument('--load-dir', default='./trained_models/',
 parser.add_argument('--start-container', action='store_true', default=False,
                     help='start the Duckietown container image')
 parser.add_argument('--saved-encoder-model', type=str, help='Additional string added to save files')
-parser.add_argument('--save-tag', type=str, default = "", help='Additional string added to save files')
+parser.add_argument('--save-tag', type=str, default = "_1", help='Additional string added to save files; Includes the random seed at the end')
 parser.add_argument('--latent-space-size', type=int, default=100,
                         help='Size of latent code (default: 100)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -44,7 +44,7 @@ if args.saved_encoder_model:
         
         vae = VAE(z_dim=args.latent_space_size, use_cuda=args.cuda) 
         vae.load_state_dict(model)
-        args.save_tag = "_"+args.saved_encoder_model.split("/")[-1].split(".")[0]
+        args.save_tag = "_"+args.saved_encoder_model.split("/")[-1].split(".")[0] + "_" + str(args.seed)
 
         if args.cuda:
             vae.cuda()

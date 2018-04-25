@@ -76,7 +76,7 @@ def get_args():
     parser.add_argument('--latent-space-size', type=int, default=100,
                         help='Size of latent code (default: 100)')
     parser.add_argument('--saved-encoder-model', type=str, help='Save file to use')
-    parser.add_argument('--save-tag', type=str, default="", help='Additional string added to save files')
+    parser.add_argument('--save-tag', type=str, default = "_1", help='Additional string added to save files; Includes the random seed at the end')
     
 
     args = parser.parse_args()
