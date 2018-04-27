@@ -608,51 +608,83 @@ class SimpleSimEnv(gym.Env):
         # Return first observation
         return obs
 
-    def reset_keep_same(self, keep_same):
+    def higgens_sample(self, factor, num_sample):
+        to_return = np.zeros(shape=[num_sample, 120, 160, 3])
+        fixed_x = self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE
+        fixed_y = self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE
+        fixed_a = self.np_random.uniform(0, 2 * math.pi)
+        sample = 0
+        while sample < num_sample:
+            if factor == 'posx':
+                obs = self.higgens_sample_fixed('x', fixed_x)
+            elif factor == 'posy':
+                obs = self.higgens_sample_fixed('y', fixed_y)
+            elif factor == 'angle':
+                obs = self.higgens_sample_fixed('a', fixed_a)
+            else:
+                print('invalid input')
+                break
+            if isinstance(obs, np.ndarray):
+                to_return[sample] = obs
+                sample += 1
+            else:
+                print('not good combo, trying again!')
+                to_return = np.zeros(shape=[num_sample, 120, 160, 3])
+                fixed_x = self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE
+                fixed_y = self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE
+                fixed_a = self.np_random.uniform(0, 2 * math.pi)
+                sample = 0
+        return to_return
+
+
+    def higgens_sample_fixed(self, which_fixed, fixed):
         # Step count since episode start
         self.step_count = 0
 
-        if not 'horizonColor' in keep_same:
-            # Horizon color
-            self.horizonColor = self._perturb(HORIZON_COLOR)
+        # Horizon color
+        self.horizonColor = self._perturb(HORIZON_COLOR)
 
-        if not 'groundColor' in keep_same:
-            # Ground color
-            self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
+        # Ground color
+        self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
 
+        # Road color multiplier
+        self.roadColor = self._perturb(ROAD_COLOR, 0.2)
 
-        if not 'roadColor' in keep_same:
-            # Road color multiplier
-            self.roadColor = self._perturb(ROAD_COLOR, 0.2)
+        # Distance between the robot's wheels
+        self.wheelDist = self._perturb(WHEEL_DIST)
 
+        # Distance bewteen camera and ground
+        self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
 
-        if not 'wheelDist' in keep_same:
-            # Distance between the robot's wheels
-            self.wheelDist = self._perturb(WHEEL_DIST)
+        # Angle at which the camera is pitched downwards
+        self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
 
-
-        if not 'camHeight' in keep_same:
-            # Distance bewteen camera and ground
-            self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
-
-
-        if not 'camAngle' in keep_same:
-            # Angle at which the camera is pitched downwards
-            self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
-
-
-        if not 'camFovY' in keep_same:
-            # Field of view angle of the camera
-            self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
+        # Field of view angle of the camera
+        self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
 
         # Randomize the starting position and angle
         # Pick a random starting tile and angle, do rejection sampling
-        while True:
-            self.curPos = np.array([
-                self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE,
-                0,
-                self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE,
-            ])
+        num_steps = 0
+        while True and num_steps < 1000:
+            num_steps += 1
+            if which_fixed == 'x':
+                self.curPos = np.array([
+                    fixed,
+                    0,
+                    self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE,
+                ])
+            elif which_fixed == 'y':
+                self.curPos = np.array([
+                    self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE,
+                    0,
+                    fixed,
+                ])
+            else:
+                self.curPos = np.array([
+                    self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE,
+                    0,
+                    self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE,
+                ])
 
             i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
             tile = self._get_grid(i, j)
@@ -666,7 +698,10 @@ class SimpleSimEnv(gym.Env):
                 continue
 
             # Choose a random direction
-            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
+            if which_fixed == 'a':
+                self.curAngle = fixed
+            else:
+                self.curAngle = self.np_random.uniform(0, 2 * math.pi)
 
             dist, dotDir, angle = self.getLanePos()
             if dist < -0.20 or dist > 0.12:
@@ -675,6 +710,9 @@ class SimpleSimEnv(gym.Env):
                 continue
 
             break
+
+        if num_steps > 999:
+            return 'not good'
 
         """
         self.curPos = np.array([
@@ -703,7 +741,6 @@ class SimpleSimEnv(gym.Env):
 
         # Return first observation
         return obs
-
 
     def _update_pos(self, wheelVels, deltaTime):
         """

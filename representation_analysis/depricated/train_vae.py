@@ -2,13 +2,13 @@ import argparse
 import math
 import os
 
-#from torch.utils.data import DataLoader
+# from torch.utils.data import DataLoader
 import torch
-from torch.autograd import Variable
 import torch.nn.functional as F
 import torchvision
+from torch.autograd import Variable
 
-from representation_analysis.DuckieDataset import DuckieDataset
+from representation_analysis.depricated.DuckieDataset import DuckieDataset
 from representation_analysis.models import VAE
 
 
