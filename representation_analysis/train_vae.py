@@ -23,7 +23,7 @@ def log_sum_exp(value):
 
 
 parser = argparse.ArgumentParser(description='VAE')
-parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+parser.add_argument('--batch_size', type=int, default=350, metavar='N',
                     help='Input batch size for training (default: 128)')
 parser.add_argument('--num_steps', type=int, default=1718, metavar='M',
                     help='Number of steps to train (default: 1718)')
@@ -178,7 +178,6 @@ while step < args.num_steps:
             if args.model_type == 'beta-tcvae':
                 kl_divergence = torch.sum(0.5 * 1 * (mu ** 2 + torch.exp(log_var) - log_var - 1))
                 kl_divergence /= args.batch_size
-                #print('KL divergence: {:.4f}'.format(kl_divergence.data[0]))
 
                 TC = compute_total_correlation(len(data_loader)*args.batch_size, mu, log_var, z)
 
@@ -188,9 +187,9 @@ while step < args.num_steps:
 
                 # Backprop + Optimize
                 beta = int(args.beta)
-                total_loss = reconst_loss + (beta-1)*TC
-                print('Total Loss={:.4f} TC={:.4f} Reconstruction Loss={:.4f}'
-                      .format(total_loss.data[0], TC.data[0], reconst_loss.data[0]))
+                total_loss = reconst_loss + (beta-1)*TC + kl_divergence
+                print('Total Loss={:.4f} TC={:.4f} Reconstruction Loss={:.4f} KL divergence: {:.4f}'
+                      .format(total_loss.data[0], TC.data[0], reconst_loss.data[0], kl_divergence.data[0]))
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
