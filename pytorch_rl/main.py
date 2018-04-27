@@ -39,6 +39,7 @@ num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
+    torch.cuda.set_device(args.gpu)
 
 try:
     os.makedirs(args.log_dir)
