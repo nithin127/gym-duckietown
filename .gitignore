@@ -5,4 +5,5 @@ representation_analysis/saves/
 representation_analysis/reconstructions/
 representation_analysis/data/
 representation_analysis/data.zip
+representation_analysis/test_data
 *.ckpt

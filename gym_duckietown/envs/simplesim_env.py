@@ -608,6 +608,103 @@ class SimpleSimEnv(gym.Env):
         # Return first observation
         return obs
 
+    def reset_keep_same(self, keep_same):
+        # Step count since episode start
+        self.step_count = 0
+
+        if not 'horizonColor' in keep_same:
+            # Horizon color
+            self.horizonColor = self._perturb(HORIZON_COLOR)
+
+        if not 'groundColor' in keep_same:
+            # Ground color
+            self.groundColor = self.np_random.uniform(low=0.05, high=0.6, size=(3,))
+
+
+        if not 'roadColor' in keep_same:
+            # Road color multiplier
+            self.roadColor = self._perturb(ROAD_COLOR, 0.2)
+
+
+        if not 'wheelDist' in keep_same:
+            # Distance between the robot's wheels
+            self.wheelDist = self._perturb(WHEEL_DIST)
+
+
+        if not 'camHeight' in keep_same:
+            # Distance bewteen camera and ground
+            self.camHeight = self._perturb(CAMERA_FLOOR_DIST, 0.08)
+
+
+        if not 'camAngle' in keep_same:
+            # Angle at which the camera is pitched downwards
+            self.camAngle = self._perturb(CAMERA_ANGLE, 0.2)
+
+
+        if not 'camFovY' in keep_same:
+            # Field of view angle of the camera
+            self.camFovY = self._perturb(CAMERA_FOV_Y, 0.2)
+
+        # Randomize the starting position and angle
+        # Pick a random starting tile and angle, do rejection sampling
+        while True:
+            self.curPos = np.array([
+                self.np_random.uniform(-0.5, self.grid_width - 0.5) * ROAD_TILE_SIZE,
+                0,
+                self.np_random.uniform(-0.5, self.grid_height - 0.5) * ROAD_TILE_SIZE,
+            ])
+
+            i, j = self._get_grid_pos(self.curPos[0], self.curPos[2])
+            tile = self._get_grid(i, j)
+
+            if tile is None:
+                continue
+
+            kind, angle = tile
+
+            if kind == 'black':
+                continue
+
+            # Choose a random direction
+            self.curAngle = self.np_random.uniform(0, 2 * math.pi)
+
+            dist, dotDir, angle = self.getLanePos()
+            if dist < -0.20 or dist > 0.12:
+                continue
+            if angle < -30 or angle > 30:
+                continue
+
+            break
+
+        """
+        self.curPos = np.array([
+            self.np_random.uniform(-0.20, 0.20),
+            0.0,
+            self.np_random.uniform(0.25, 0.75),
+        ])
+        self.curAngle = (math.pi/2) + (self.np_random.uniform(-20, 20) * math.pi/180)
+        """
+
+        # Create the vertex list for the ground/noise triangles
+        # These are distractors, junk on the floor
+        numTris = 12
+        verts = []
+        colors = []
+        for i in range(0, 3 * numTris):
+            p = self.np_random.uniform(low=[-20, -0.6, -20], high=[20, -0.3, 20], size=(3,))
+            c = self.np_random.uniform(low=0, high=0.9)
+            c = self._perturb(np.array([c, c, c]), 0.1)
+            verts += [p[0], p[1], p[2]]
+            colors += [c[0], c[1], c[2]]
+        self.triVList = pyglet.graphics.vertex_list(3 * numTris, ('v3f', verts), ('c3f', colors) )
+
+        # Get the first camera image
+        obs = self._render_obs()
+
+        # Return first observation
+        return obs
+
+
     def _update_pos(self, wheelVels, deltaTime):
         """
         Update the position of the robot, simulating differential drive
