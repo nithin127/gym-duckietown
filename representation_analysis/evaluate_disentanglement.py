@@ -24,10 +24,12 @@ parser.add_argument('--state_size', type=int, default=100,
                     help='Size of latent code (default: 100)')
 parser.add_argument('--train_len', type=int, default=1000,
                     help='How long to train for (default: 1000)')
-parser.add_argument('--num_per_group', type=int, default=100,
+parser.add_argument('--num_per_group', type=int, default=1000,
                     help='How many samples do you have per group (default: 100)')
-parser.add_argument('--num_per_sample', type=int, default=10,
-                    help='L in Disentangling paper (default: 10)')
+parser.add_argument('--num_per_sample', type=int, default=100,
+                    help='L in Disentangling paper (default: 100)')
+parser.add_argument('--batch_size', type=int, default=10,
+                    help='Batch size of classifier (default: 10)')
 
 #'--saved_model representation_analysis/saves/beta-vae/beta-vae_1000.ckpt'
 
@@ -42,21 +44,11 @@ try:
     vae = VAE(z_dim=args.state_size, use_cuda=args.cuda)
     vae.load_state_dict(model)
     optimizer_states = loaded_state['optimizer']
-
-    #total_losses = loaded_state['loss']['total']
-    #reconst_losses = loaded_state['loss']['reconstruction']
-    #kl_divergences = loaded_state['loss']['kl_divergence']
-    #TC_losses = loaded_state['loss']['TC_losses']
-    #args = loaded_state['args']
-    #beta = loaded_state['beta']
     fixed_x = loaded_state['fixed_x']
     # save_curve(total_losses, TC_losses)
     parameters = list(vae.parameters())
     if args.cuda:
         vae.cuda()
-
-    #optimizer = torch.optim.Adam(parameters, lr=0.001)
-    #optimizer.load_state_dict(optimizer_states)
 
     print('model found and loaded successfully... resuming training from step {}'.format(step))
 except:
@@ -68,8 +60,8 @@ class disentanglement_dataset(Dataset):
     def __init__(self):
         self.root_dir = os.path.join(os.getcwd(), 'representation_analysis/test_data/')
         self.num_groups = 6
-        self.num_per_group = 100  # How many images per group
-        self.num_per_sample = 10  #L in https://arxiv.org/pdf/1802.05983.pdf pg 4
+        self.num_per_group = args.num_per_group    # How many images per group
+        self.num_per_sample = args.num_per_sample  #L in https://arxiv.org/pdf/1802.05983.pdf pg 4
 
     def __len__(self):
         return args.train_len
@@ -89,21 +81,6 @@ class disentanglement_dataset(Dataset):
         else:
             images = Variable(images.cuda())
         _, mu, _, _ = vae(images)
-
-        #file_to_go_to = os.listdir(os.path.join(self.root_dir, dir_to_go_to, 'trajectories'))[idx]
-        #file_to_go_to_2 = os.listdir(os.path.join(self.root_dir, dir_to_go_to, 'trajectories'))[np.random.randint(0, self.num_per_group)]
-        #img_name = os.path.join(self.root_dir, dir_to_go_to,'trajectories', file_to_go_to)
-        #img_name_2 = os.path.join(self.root_dir, dir_to_go_to,'trajectories', file_to_go_to_2)
-
-        #image = transforms.ToTensor()(io.imread(img_name))
-        #image2 = transforms.ToTensor()(io.imread(img_name_2))
-
-
-        #if not args.cuda:
-        #    image2 = Variable(image2)
-        #else:
-        #    image2 = Variable(image2.cuda())
-
 
         diff = torch.abs(mu[:self.num_per_sample]-mu[self.num_per_sample:]).data
 
@@ -134,7 +111,7 @@ disentanglement_classifier_optimizer = optim.SGD(disentanglement_classifier.para
                                                  lr=0.001, momentum=0.9)
 
 factor_dataset = disentanglement_dataset()
-data_loader = DataLoader(dataset=factor_dataset, batch_size=10, shuffle=True)
+data_loader = DataLoader(dataset=factor_dataset, batch_size=args.batch_size, shuffle=True)
 
 step = 0
 for sample in data_loader:
@@ -151,8 +128,5 @@ for sample in data_loader:
     disentanglement_classifier_optimizer.step()
     print('Train Step: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
         step, len(data_loader), step/len(data_loader), loss.data[0]))
-
-
-
 
 print('done?')

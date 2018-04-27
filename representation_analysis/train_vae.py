@@ -23,7 +23,7 @@ def log_sum_exp(value):
 
 
 parser = argparse.ArgumentParser(description='VAE')
-parser.add_argument('--batch_size', type=int, default=400, metavar='N',
+parser.add_argument('--batch_size', type=int, default=350, metavar='N',
                     help='Input batch size for training (default: 128)')
 parser.add_argument('--num_steps', type=int, default=1718, metavar='M',
                     help='Number of steps to train (default: 1718)')
