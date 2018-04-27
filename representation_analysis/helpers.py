@@ -37,24 +37,31 @@ def logsumexp(inputs, dim=None, keepdim=False):
     return outputs
 
 
-def compute_total_correlation(N, mu, log_var, z):
+def compute_total_correlation(N, mu, log_var, z, sample=False):
     M = z.shape[0]
-    sample = []
-    for i in range(M):
-        sample.append(np.random.multivariate_normal(loc=mu[i], covariance_matrix=torch.exp(0.5 * log_var)[i].diag()).sample())
-    sample = torch.stack(sample, dim=0)[:, -1, :]
-    q_z = distributions.Normal(mean=mu, std=torch.exp(0.5*log_var))
-    total_array = []
-    for i in range(M):
-        total_array.append(q_z.log_prob(sample[i]))
-    q_mat = torch.stack(total_array, dim=0)
+    if sample:
+        sample = []
+        for i in range(M):
+            sample.append(np.random.multivariate_normal(loc=mu[i], covariance_matrix=torch.exp(0.5 * log_var)[i].diag()).sample())
+        sample = torch.stack(sample, dim=0)[:, -1, :]
+        q_z = distributions.Normal(mean=mu, std=torch.exp(0.5*log_var))
+        total_array = []
+        for i in range(M):
+            total_array.append(q_z.log_prob(sample[i]))
+        q_mat = torch.stack(total_array, dim=0)
+    else:
+        q_z = distributions.Normal(mean=mu, std=torch.exp(0.5 * log_var))
+        total_array = []
+        for i in range(M):
+            total_array.append(q_z.log_prob(z[i]))
+        q_mat = torch.stack(total_array, dim=0)
 
     H = - (logsumexp(q_mat.sum(dim=2), dim=0) - np.log(N * M)).mean()
-    CE = - (logsumexp(q_mat, dim=1).sum(dim=1) - np.log(N * M)).mean()
-    #print('entropy: {}'.format(H.data[0]))
-    #print('cross entropy: {}'.format(CE.data[0]))
+    CE =  (logsumexp(q_mat, dim=1).sum(dim=1) - np.log(N * M)).mean()
+    print('entropy: {}'.format(H.data[0]))
+    print('cross entropy: {}'.format(CE.data[0]))
     #print('log_var: {}'.format(log_var.data[0]))
-    return - (CE - H)
+    return (CE - H)
 
 def compute_dim_wise_entropy(N, mu, log_var, z):
     #M = z.shape[0]
