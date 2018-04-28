@@ -9,4 +9,5 @@ representation_analysis/train_data
 representation_analysis/test_data
 representation_analysis/train_targets.npy
 representation_analysis/test_targets.npy
+representation_analysis/results.npy
 *.ckpt
