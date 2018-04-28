@@ -16,9 +16,9 @@ from torch.utils.data import Dataset, DataLoader
 from representation_analysis.models import VAE
 
 parser = argparse.ArgumentParser(description='VAE')
-parser.add_argument('--num_samples_train', type=int, default=200,
+parser.add_argument('--num_samples_train', type=int, default=20,
                     help='num samples for training')
-parser.add_argument('--num_samples_test', type=int, default=50,
+parser.add_argument('--num_samples_test', type=int, default=10,
                     help='num samples per testing')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='Enables CUDA training')

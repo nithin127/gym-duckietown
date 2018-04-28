@@ -82,8 +82,8 @@ data_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args
 
 final_results = []
 
-for model in os.listdir('representation_analysis/saves/beta-vae/'):
-    args.saved_model = os.path.join('representation_analysis/saves/beta-vae/', model)
+for model in os.listdir('representation_analysis/saves/beta-tc-vae/'):
+    args.saved_model = os.path.join('representation_analysis/saves/beta-tc-vae/', model)
     if args.saved_model:
         try:
             loaded_state = torch.load(args.saved_model)
@@ -124,4 +124,4 @@ for model in os.listdir('representation_analysis/saves/beta-vae/'):
     print('The HSIC array for {} is:\n'.format(HSIC_array))
     print('The mean value of the HSIC_array is {}'.format(np.mean(HSIC_array)))
     final_results.append([beta, args.state_size, np.mean(HSIC_array)])
-    np.save('representation_analysis/hsic_results', np.array(final_results))
+    np.save('representation_analysis/hsic_results_tcvae', np.array(final_results))
