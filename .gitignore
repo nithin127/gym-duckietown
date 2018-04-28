@@ -6,6 +6,7 @@ representation_analysis/reconstructions/
 representation_analysis/data/
 representation_analysis/data.zip
 representation_analysis/train_data
+*.jpg
 representation_analysis/test_data
 representation_analysis/train_targets.npy
 representation_analysis/test_targets.npy
