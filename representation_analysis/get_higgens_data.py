@@ -12,9 +12,9 @@ from representation_analysis.models import VAE
 
 env = SimpleSimEnv(draw_curve=False)
 parser = argparse.ArgumentParser(description='VAE')
-parser.add_argument('--num_samples_train', type=int, default=100,
+parser.add_argument('--num_samples_train', type=int, default=5000,
                     help='num samples for training')
-parser.add_argument('--num_samples_test', type=int, default=50,
+parser.add_argument('--num_samples_test', type=int, default=500,
                     help='num samples per testing')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='Enables CUDA training')
