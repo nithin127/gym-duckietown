@@ -1,6 +1,8 @@
+*.DS_Store
 *.pyc
 *.egg-info
 .idea/
+<<<<<<< HEAD
 representation_analysis/saves/
 representation_analysis/reconstructions/
 representation_analysis/data/
@@ -12,3 +14,7 @@ representation_analysis/train_targets.npy
 representation_analysis/test_targets.npy
 representation_analysis/results.npy
 *.ckpt
+=======
+
+xvfb.log
+>>>>>>> upstream/master

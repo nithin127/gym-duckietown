@@ -11,7 +11,5 @@ setup(
         'pyzmq>=16.0.0',
         'scikit-image>=0.13.1',
         'opencv-python>=3.4',
-        'tensorflow>=1.4.0' #Not sure of the version number
-        'pyro'
-    ]
+        'pyyaml>=3.12'
 )
