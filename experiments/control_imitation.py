@@ -53,7 +53,8 @@ def load_model():
         print('failed to load model')
 
     model.eval()
-    model.cuda()
+    if torch.cuda.is_available():
+        model.cuda()
 
 load_model()
 
