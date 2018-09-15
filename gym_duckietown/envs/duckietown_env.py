@@ -85,6 +85,14 @@ class DuckietownLF(DuckietownEnv):
         obs, reward, done, info = super().step(action)
         return obs, reward, done, info
 
+class DuckietownGridworldEnv(Simulator):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        return obs, reward, done, info
+
 class DuckietownNav(DuckietownEnv):
     """
     Environment for the Duckietown navigation task (NAV)

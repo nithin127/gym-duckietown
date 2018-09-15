@@ -218,6 +218,10 @@ class Simulator(gym.Env):
 
         # Initialize the state
         self.seed()
+
+        # TODO: Make arg
+        self.gridworld_phys = True
+
         self.reset()
 
     def reset(self):
@@ -350,6 +354,11 @@ class Simulator(gym.Env):
 
             # Found a valid initial pose
             break
+
+        
+        if self.gridworld_phys:
+            self.cur_angle = self.np_random.choice([0, np.pi / 2, np.pi, 3 * np.pi / 2])
+            return self.render_gridworld()
 
         # Generate the first camera image
         obs = self.render_obs()
@@ -1039,7 +1048,36 @@ class Simulator(gym.Env):
             not self._collision()
         )
 
+    def _step_gridworld(self, action):
+        action = np.array(action)
+
+        # Left
+        if action == 1:
+            self.cur_angle += np.pi / 2
+
+        # Right
+        elif action == 2:
+            self.cur_angle -= np.pi / 2
+
+        # Forward
+        elif action == 3:
+            heading = self.get_dir_vec()
+            dx = int(heading[0])
+            dz = int(heading[2])
+
+            coords = self.get_grid_coords(self.cur_pos)
+            newcoords = coords + np.array([dx, dz])
+
+            if self._get_tile(newcoords[0], newcoords[1])['drivable']:
+                self.cur_pos += heading * ROAD_TILE_SIZE
+
+        return self.render_gridworld(), 0, False, None
+
+
     def step(self, action):
+        if self.gridworld_phys: 
+            return self._step_gridworld(action)
+
         # Actions could be a Python list
         action = np.array(action)
 
@@ -1148,7 +1186,8 @@ class Simulator(gym.Env):
         if self.draw_bbox:
             y += 0.8
             glRotatef(90, 1, 0, 0)
-        elif not top_down:
+
+        if not self.draw_bbox and not top_down:
             y += self.cam_height
             glRotatef(self.cam_angle[0], 1, 0, 0)
             glRotatef(self.cam_angle[1], 0, 1, 0)
@@ -1260,7 +1299,6 @@ class Simulator(gym.Env):
             glEnd()
 
         if top_down:
-            
             glPushMatrix()
             glTranslatef(*self.cur_pos)
             glScalef(1, 1, 1)
@@ -1303,6 +1341,16 @@ class Simulator(gym.Env):
         img_array = np.ascontiguousarray(np.flip(img_array, axis=0))
 
         return img_array
+
+    def render_gridworld(self):
+        return self._render_img(
+            CAMERA_WIDTH,
+            CAMERA_HEIGHT,
+            self.multi_fbo,
+            self.final_fbo,
+            self.img_array
+        )
+
 
     def render_obs(self):
         """
