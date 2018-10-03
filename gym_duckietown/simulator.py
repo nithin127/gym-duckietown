@@ -362,7 +362,7 @@ class Simulator(gym.Env):
 
         
         if self.gridworld_phys:
-            self.cur_angle = self.np_random.choice([0, np.pi / 2, np.pi, 3 * np.pi / 2])
+            self.cur_angle = self.np_random.choice([0, np.pi / 2, np.pi, 1.5 * np.pi])
             return self.render_gridworld()
 
         # Generate the first camera image
@@ -989,6 +989,15 @@ class Simulator(gym.Env):
         ]
         return np.any(results)
 
+    def _shift_center(self):
+        i, j = self.get_grid_coords(self.cur_pos)
+
+        # Choose the center position on this tile
+        x = (i + 0.5) * ROAD_TILE_SIZE
+        z = (j + 0.5) * ROAD_TILE_SIZE
+
+        self.cur_pos = np.array([x, 0, z])
+
     def _collision(self):
         """
         Tensor-based OBB Collision detection
@@ -1054,18 +1063,21 @@ class Simulator(gym.Env):
         )
 
     def _step_gridworld(self, action):
+        """
+        Action based on gridworld physics
+        """
         action = np.array(action)
 
         # Left
-        if action == 1:
+        if action == 0:
             self.cur_angle += np.pi / 2
 
         # Right
-        elif action == 2:
+        elif action == 1:
             self.cur_angle -= np.pi / 2
 
         # Forward
-        elif action == 3:
+        elif action == 2:
             heading = self.get_dir_vec()
             dx = int(heading[0])
             dz = int(heading[2])
@@ -1076,8 +1088,34 @@ class Simulator(gym.Env):
             if self._get_tile(newcoords[0], newcoords[1])['drivable']:
                 self.cur_pos += heading * ROAD_TILE_SIZE
 
-        return self.render_gridworld(), 0, False, None
+        masks = self._generate_masks()
+        # TODO: Need to give reward / done
+        return self.render_gridworld(), 0, False, masks
 
+    def _generate_masks(self):
+        """
+        Generate information masks for gridworld
+        """
+        mask = np.zeros((self.grid_width, self.grid_height))
+        masks = []
+
+        # Agent on this tile
+        # j, i helps align with human view
+        mask_agent = np.copy(mask)
+        i, j = self.get_grid_coords(self.cur_pos)
+        mask_agent[j][i] = 1
+
+        masks.append(mask_agent)
+
+        # Drivable Tiles
+        mask_drivable = np.copy(mask)
+        for tile in self.drivable_tiles:
+            i, j = tile['coords']
+            mask_drivable[j][i] = 1
+
+        masks.append(mask_drivable)
+
+        return np.array(masks)
 
     def step(self, action):
         if self.gridworld_phys: 

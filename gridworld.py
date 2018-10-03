@@ -21,6 +21,8 @@ parser.add_argument('--draw-curve', action='store_true', help='draw the lane fol
 parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 parser.add_argument('--frame-skip', default=1, type=int, help='number of frames to skip')
+parser.add_argument('--first-person', action='store_true', help='enable first person view')
+parser.add_argument('--start-centered', action='store_true', help='start in center of tile')
 
 args = parser.parse_args()
 
@@ -31,9 +33,10 @@ if args.env_name is None:
         draw_bbox = args.draw_bbox,
         domain_rand = args.domain_rand,
         frame_skip = args.frame_skip,
-        gridworld_phys = args.gridworld_phys,
-        aerial_view = args.aerial_view,
+        first_person = args.first_person,
+        start_centered = args.start_centered,
     )
+
 else:
     env = gym.make(args.env_name)
 
@@ -50,13 +53,13 @@ def on_key_press(symbol, modifiers):
     This handler processes keyboard commands that
     control the simulation
     """
-    action = np.array(0)
+    action = np.array(-1)
     if symbol == key.LEFT:
-        action = np.array([1])
+        action = np.array([0])
     elif symbol == key.RIGHT:
-        action = np.array([2])
+        action = np.array([1])
     elif symbol == key.UP:
-        action = np.array([3])
+        action = np.array([2])
     elif symbol == key.BACKSPACE or symbol == key.SLASH:
         print('RESET')
         env.reset()

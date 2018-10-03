@@ -34,6 +34,7 @@ if args.env_name is None:
         frame_skip = args.frame_skip,
         aerial_view = args.aerial_view,
     )
+
 else:
     env = gym.make(args.env_name)
 
