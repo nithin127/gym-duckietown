@@ -103,7 +103,9 @@ class Simulator(gym.Env):
         draw_bbox=False,
         domain_rand=True,
         frame_rate=30,
-        frame_skip=1
+        frame_skip=1,
+        gridworld_phys=False,
+        aerial_view=False,
     ):
         # Map name, set in _load_map()
         self.map_name = None
@@ -128,6 +130,12 @@ class Simulator(gym.Env):
 
         # Number of frames to skip per action
         self.frame_skip = frame_skip
+
+        # Enable gridworld physics
+        self.gridworld_phys = gridworld_phys
+
+        # Enable aerial view / observation
+        self.aerial_view = aerial_view or gridworld_phys
 
         # Produce graphical output
         self.graphics = True
@@ -218,9 +226,6 @@ class Simulator(gym.Env):
 
         # Initialize the state
         self.seed()
-
-        # TODO: Make arg
-        self.gridworld_phys = True
 
         self.reset()
 
@@ -1139,7 +1144,7 @@ class Simulator(gym.Env):
 
         return obs, reward, done, {}
 
-    def _render_img(self, width, height, multi_fbo, final_fbo, img_array, top_down=True):
+    def _render_img(self, width, height, multi_fbo, final_fbo, img_array):
         """
         Render an image of the environment into a frame buffer
         Produce a numpy RGB array image as output
@@ -1187,14 +1192,14 @@ class Simulator(gym.Env):
             y += 0.8
             glRotatef(90, 1, 0, 0)
 
-        if not self.draw_bbox and not top_down:
+        if not self.draw_bbox and not self.aerial_view:
             y += self.cam_height
             glRotatef(self.cam_angle[0], 1, 0, 0)
             glRotatef(self.cam_angle[1], 0, 1, 0)
             glRotatef(self.cam_angle[2], 0, 0, 1)
             glTranslatef(0, 0, self._perturb(CAMERA_FORWARD_DIST))
 
-        if top_down:
+        if self.aerial_view:
             gluLookAt(
                 # Eye position
                 (self.grid_width * ROAD_TILE_SIZE) / 2,
@@ -1298,7 +1303,7 @@ class Simulator(gym.Env):
             glVertex3f(corners[3, 0], 0.01, corners[3, 1])
             glEnd()
 
-        if top_down:
+        if self.aerial_view:
             glPushMatrix()
             glTranslatef(*self.cur_pos)
             glScalef(1, 1, 1)
@@ -1365,7 +1370,7 @@ class Simulator(gym.Env):
             self.img_array
         )
 
-    def render(self, mode='top_down', close=False):
+    def render(self, mode='human', close=False):
         """
         Render the environment for human viewing
         """

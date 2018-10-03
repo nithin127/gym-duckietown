@@ -21,6 +21,8 @@ parser.add_argument('--draw-curve', action='store_true', help='draw the lane fol
 parser.add_argument('--draw-bbox', action='store_true', help='draw collision detection bounding boxes')
 parser.add_argument('--domain-rand', action='store_true', help='enable domain randomization')
 parser.add_argument('--frame-skip', default=1, type=int, help='number of frames to skip')
+parser.add_argument('--aerial-view', action='store_true', help='enable aerial view')
+
 args = parser.parse_args()
 
 if args.env_name is None:
@@ -29,7 +31,8 @@ if args.env_name is None:
         draw_curve = args.draw_curve,
         draw_bbox = args.draw_bbox,
         domain_rand = args.domain_rand,
-        frame_skip = args.frame_skip
+        frame_skip = args.frame_skip,
+        aerial_view = args.aerial_view,
     )
 else:
     env = gym.make(args.env_name)

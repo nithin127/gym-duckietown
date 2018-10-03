@@ -89,6 +89,8 @@ class DuckietownGridworldEnv(Simulator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self.action_space = spaces.Discrete(4)
+
     def step(self, action):
         obs, reward, done, info = super().step(action)
         return obs, reward, done, info
