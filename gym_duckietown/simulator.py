@@ -380,7 +380,11 @@ class Simulator(gym.Env):
         self.map_name = map_name
 
         # Get the full map file path
-        self.map_file_path = get_file_path('maps', map_name, 'yaml')
+        
+        if self.map_name == "output":
+            self.map_file_path = get_file_path('..', map_name, 'yaml')
+        else:
+            self.map_file_path = get_file_path('maps', map_name, 'yaml')
 
         print('loading map file "%s"' % self.map_file_path)
 
