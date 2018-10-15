@@ -124,3 +124,35 @@ class DuckietownNav(DuckietownEnv):
             reward = 1000
 
         return obs, reward, done, info
+
+class DuckietownGridworldEnv(Simulator):
+    """
+    Specialized environment with gridworld physics
+    """
+
+    def __init__(self, **kwargs):
+        first_person = start_centered = False
+        if kwargs['first_person']:
+            first_person = True
+        
+        if kwargs['start_centered']:
+            start_centered = True
+        
+        del kwargs['first_person']
+        del kwargs['start_centered']
+
+        super().__init__(**kwargs)
+
+        self.aerial_view = True
+        if first_person:
+            self.aerial_view = False
+
+        if start_centered:
+            self._shift_center()
+
+        self.action_space = spaces.Discrete(3)
+        self.gridworld_phys = True
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        return obs, reward, done, info
